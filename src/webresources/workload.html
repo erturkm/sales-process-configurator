@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>My work</title>
+<style>
+:root{
+  --ink:#0F1B2D; --muted:#5B6472; --line:#E3E7ED; --bg:#F6F8FB;
+  --brand:#0F6CBD; --red:#F4364C; --green:#107C41; --amber:#C19C00; --grey:#B4BAC4;
+  --purple:#6C4BB6;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;padding:14px 16px;font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  font-size:12.5px;color:var(--ink);background:#fff;
+}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+.top h2{margin:0;font-size:16px;font-weight:600;letter-spacing:-.2px}
+.top .who{color:var(--muted);font-size:11.5px}
+.spacer{flex:1}
+.ctl{display:flex;align-items:center;gap:6px}
+.ctl label{font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+select{
+  font-family:inherit;font-size:12px;color:var(--ink);background:#fff;
+  border:1px solid var(--line);border-radius:6px;padding:5px 26px 5px 9px;cursor:pointer;
+  appearance:none;min-width:190px;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235B6472' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;
+}
+select:focus{outline:2px solid rgba(15,108,189,.35);outline-offset:-1px;border-color:var(--brand)}
+.btn{
+  font-family:inherit;font-size:11.5px;font-weight:600;color:var(--muted);background:#fff;
+  border:1px solid var(--line);border-radius:6px;padding:5px 11px;cursor:pointer;
+}
+.btn:hover{background:var(--bg);color:var(--ink)}
+
+/* ---------- scope switch ---------- */
+.seg{display:inline-flex;background:var(--bg);border-radius:7px;padding:2px;gap:2px}
+.seg button{
+  font-family:inherit;font-size:11.5px;font-weight:600;color:var(--muted);
+  background:transparent;border:0;border-radius:5px;padding:5px 13px;cursor:pointer;
+}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(15,27,45,.14)}
+.seg button .n{
+  display:inline-block;margin-left:5px;font-size:9.5px;font-weight:700;
+  background:var(--line);color:var(--muted);border-radius:9px;padding:0 5px;
+}
+.seg button.on .n{background:#EAF2FB;color:var(--brand)}
+
+/* ---------- kpi tiles ---------- */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin:14px 0 16px}
+.kpi{
+  border:1px solid var(--line);border-radius:9px;padding:10px 12px;cursor:pointer;
+  background:#fff;transition:background .12s,border-color .12s;position:relative;overflow:hidden;
+}
+.kpi:hover{background:var(--bg)}
+.kpi.on{border-color:var(--brand);background:#F5F9FD}
+
+/* ---------- charts ---------- */
+.charts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin:0 0 16px}
+.card{
+  border:1px solid var(--line);border-radius:9px;background:#fff;padding:10px 12px 8px;
+  display:flex;flex-direction:column;min-width:0;
+}
+.card h4{
+  margin:0;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  color:var(--muted);
+}
+.ch{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.ch .hint{font-size:10.5px;color:var(--grey);margin-left:auto;white-space:nowrap}
+.cw{position:relative;height:168px}
+.cw canvas{cursor:pointer}
+.cw .none{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:var(--grey);font-size:11.5px;
+}
+.cw .none[hidden]{display:none}   /* the hidden attribute alone loses to display:flex */
+@media (max-width:1100px){ .charts{grid-template-columns:1fr 1fr} }
+@media (max-width:760px){ .charts{grid-template-columns:1fr} }
+
+/* ---------- active filter chips ---------- */
+.chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 12px;min-height:0}
+.chips:empty{display:none}
+.chip{
+  display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;
+  background:#EAF2FB;color:var(--brand);border:1px solid #CFE2F5;border-radius:20px;
+  padding:3px 5px 3px 10px;
+}
+.chip b{font-weight:700}
+.chip span{color:#6E97BE;font-weight:400}
+.chip button{
+  font-family:inherit;font-size:12px;line-height:1;color:var(--brand);background:#fff;
+  border:0;border-radius:50%;width:16px;height:16px;cursor:pointer;padding:0;
+}
+.chip button:hover{background:var(--brand);color:#fff}
+.chips .clear{
+  font-family:inherit;font-size:11px;font-weight:600;color:var(--muted);background:transparent;
+  border:0;cursor:pointer;text-decoration:underline;padding:3px 4px;
+}
+.chips .clear:hover{color:var(--ink)}
+.kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--grey)}
+.kpi.red:before{background:var(--red)} .kpi.amber:before{background:var(--amber)}
+.kpi.brand:before{background:var(--brand)} .kpi.green:before{background:var(--green)}
+.kpi.purple:before{background:var(--purple)}
+.kpi .v{font-size:22px;font-weight:700;line-height:1.1;letter-spacing:-.6px}
+.kpi.red .v{color:var(--red)} .kpi.amber .v{color:#8A6D00}
+.kpi.brand .v{color:var(--brand)} .kpi.purple .v{color:var(--purple)}
+.kpi .k{font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.3}
+
+/* ---------- layout ---------- */
+.cols{display:grid;grid-template-columns:1.35fr 1fr;gap:16px;align-items:start}
+@media (max-width:980px){ .cols{grid-template-columns:1fr} .kpis{grid-template-columns:repeat(3,1fr)} }
+.panel{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.ph{
+  display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg);
+  border-bottom:1px solid var(--line);
+}
+.ph h3{margin:0;font-size:11.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--muted)}
+.ph .n{font-size:10.5px;font-weight:700;color:var(--muted);background:var(--line);border-radius:9px;padding:1px 7px}
+.plist{max-height:520px;overflow-y:auto}
+
+/* ---------- group headers ---------- */
+.grp{
+  display:flex;align-items:center;gap:7px;padding:7px 12px 5px;font-size:10px;font-weight:700;
+  letter-spacing:.5px;text-transform:uppercase;color:var(--muted);
+  background:#FCFDFE;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:2;
+}
+.grp .sw{width:7px;height:7px;border-radius:50%;background:var(--grey)}
+.grp.red .sw{background:var(--red)} .grp.red{color:var(--red)}
+.grp.amber .sw{background:var(--amber)} .grp.amber{color:#8A6D00}
+.grp.brand .sw{background:var(--brand)} .grp.brand{color:var(--brand)}
+
+/* ---------- rows ---------- */
+.row{
+  display:flex;align-items:flex-start;gap:10px;padding:9px 12px;cursor:pointer;
+  border-bottom:1px solid #F1F4F8;
+}
+.row:hover{background:#F8FAFD}
+.row:last-child{border-bottom:0}
+.av{
+  flex:none;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:9.5px;font-weight:700;color:#fff;background:var(--brand);
+  letter-spacing:.2px;margin-top:1px;
+}
+.av.team{background:var(--purple);border-radius:7px}
+.rmain{min-width:0;flex:1}
+.rt{font-weight:600;line-height:1.35;word-break:break-word}
+.rm{font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.5}
+.rm .sep{opacity:.4;margin:0 5px}
+.rr{flex:none;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.due{font-size:10.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.due.red{color:var(--red)} .due.amber{color:#8A6D00}
+.chip{
+  display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.3px;
+  border-radius:4px;padding:1px 6px;white-space:nowrap;
+}
+.chip.late{background:#FDECEE;color:var(--red)}
+.chip.warn{background:#FBF4DF;color:#8A6D00}
+.chip.ok{background:#E9F5EE;color:var(--green)}
+.chip.info{background:#EAF2FB;color:var(--brand)}
+.chip.mine{background:#F0EBFA;color:var(--purple)}
+.chip.stage{background:var(--bg);color:var(--muted)}
+.pri{
+  display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--grey);
+  margin-right:5px;vertical-align:1px;
+}
+.pri.p1{background:var(--red)} .pri.p2{background:var(--amber)}
+
+/* ---------- misc ---------- */
+.empty{color:var(--muted);font-size:11.5px;padding:26px 14px;line-height:1.6;text-align:center}
+.empty b{display:block;color:var(--ink);font-size:12.5px;margin-bottom:3px;font-weight:600}
+.err{color:var(--red);font-size:11.5px;padding:12px 14px;line-height:1.5}
+.skl{height:10px;border-radius:5px;background:var(--bg);margin:10px 0}
+.foot{font-size:10px;color:var(--muted);margin-top:10px;text-align:right}
+.bar{height:4px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:5px;width:100%}
+.bar i{display:block;height:100%;background:var(--green)}
+.bar i.red{background:var(--red)} .bar i.amber{background:var(--amber)}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h2>My work</h2>
+  <span class="who" id="who"></span>
+  <span class="spacer"></span>
+  <div class="ctl">
+    <label for="teamsel">Team</label>
+    <select id="teamsel"><option>Loading…</option></select>
+  </div>
+  <button class="btn" id="refresh" type="button">Refresh</button>
+</div>
+
+<div class="seg" id="seg"></div>
+
+<div class="kpis" id="kpis"></div>
+
+<div class="charts">
+  <div class="card">
+    <div class="ch"><h4>Task urgency</h4><span class="hint">click a slice</span></div>
+    <div class="cw"><canvas id="ch-urg"></canvas><div class="none" id="none-urg" hidden>No tasks in scope</div></div>
+  </div>
+  <div class="card">
+    <div class="ch"><h4>Workload by owner</h4><span class="hint">click a bar</span></div>
+    <div class="cw"><canvas id="ch-own"></canvas><div class="none" id="none-own" hidden>No tasks in scope</div></div>
+  </div>
+  <div class="card">
+    <div class="ch"><h4>Deals by process</h4><span class="hint">click a bar</span></div>
+    <div class="cw"><canvas id="ch-cat"></canvas><div class="none" id="none-cat" hidden>No deals in scope</div></div>
+  </div>
+</div>
+
+<div class="chips" id="chips"></div>
+
+<div class="cols">
+  <div class="panel">
+    <div class="ph"><h3>Tasks to action</h3><span class="n" id="tn">0</span></div>
+    <div class="plist" id="tasks"><div style="padding:12px">
+      <div class="skl" style="width:70%"></div><div class="skl"></div><div class="skl" style="width:85%"></div>
+    </div></div>
+  </div>
+  <div class="panel">
+    <div class="ph"><h3>Deals</h3><span class="n" id="cn">0</span></div>
+    <div class="plist" id="deals"><div style="padding:12px">
+      <div class="skl" style="width:60%"></div><div class="skl"></div>
+    </div></div>
+  </div>
+</div>
+
+<div class="foot" id="foot"></div>
+
+<script src="spc_chartjs.js"></script>
+<script>
+"use strict";
+var P = "spc_";
+
+/* ------------------------------------------------------------------ Xrm plumbing */
+
+function xrm(){
+  var w = window;
+  for (var i = 0; i < 6 && w; i++){
+    if (w.Xrm && w.Xrm.WebApi) return w.Xrm;
+    if (w === w.parent) break;
+    w = w.parent;
+  }
+  return null;
+}
+function ctx(){
+  var x = xrm();
+  try { return x && x.Utility && x.Utility.getGlobalContext ? x.Utility.getGlobalContext() : null; }
+  catch(e){ return null; }
+}
+function clientUrl(){
+  var c = ctx();
+  try { return c ? c.getClientUrl() : ""; } catch(e){ return ""; }
+}
+function apiRoot(){ return clientUrl() + "/api/data/v9.2/"; }
+
+function me(){
+  var c = ctx();
+  try {
+    var s = c && c.userSettings;
+    if (s && s.userId) return { id: String(s.userId).replace(/[{}]/g,""), name: s.userName || "" };
+  } catch(e){}
+  return null;
+}
+
+function get(path){
+  return fetch(apiRoot() + path, {
+    headers: {
+      "Accept": "application/json",
+      "OData-MaxVersion": "4.0",
+      "OData-Version": "4.0",
+      "Prefer": 'odata.include-annotations="OData.Community.Display.V1.FormattedValue"'
+    },
+    credentials: "same-origin"
+  }).then(function(r){
+    if (!r.ok) return r.text().then(function(t){ throw new Error(t.slice(0,300) || r.status); });
+    return r.json();
+  });
+}
+
+function openRec(entity, id){
+  var x = xrm();
+  if (x && x.Navigation && x.Navigation.openForm){
+    x.Navigation.openForm({ entityName: entity, entityId: id });
+    return;
+  }
+  var u = clientUrl() + "/main.aspx?pagetype=entityrecord&etn=" + entity + "&id=" + id;
+  window.open(u, "_blank");
+}
+
+/* ------------------------------------------------------------------ helpers */
+
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+  });
+}
+function initials(s){
+  var p = String(s || "?").trim().split(/\s+/);
+  return ((p[0] || "?")[0] + (p.length > 1 ? p[p.length-1][0] : "")).toUpperCase();
+}
+function esclit(s){ return String(s == null ? "" : s).replace(/'/g, "''"); }
+
+var DAY = 86400000;
+
+/** Buckets a due date relative to now. Everything downstream keys off this. */
+function urgency(iso){
+  if (!iso) return { k:"none", rank:4, label:"No due date", cls:"" };
+  var d = new Date(iso), now = new Date(), diff = d - now;
+  var eod = new Date(now); eod.setHours(23,59,59,999);
+  if (diff < 0){
+    var late = Math.max(1, Math.round(-diff / 3600000));
+    return { k:"over", rank:0, cls:"red",
+             label: late < 24 ? late + "h overdue" : Math.round(late/24) + "d overdue" };
+  }
+  if (d <= eod){
+    var h = Math.max(1, Math.round(diff / 3600000));
+    return { k:"today", rank:1, cls:"amber", label:"Due in " + h + "h" };
+  }
+  var days = Math.ceil((d - eod) / DAY);
+  if (days <= 7) return { k:"week", rank:2, cls:"", label:"Due in " + days + "d" };
+  return { k:"later", rank:3, cls:"", label: d.toLocaleDateString(undefined,{month:"short",day:"numeric"}) };
+}
+function dueOf(t){ return t[P+"sladue"] || t.scheduledend || null; }
+
+/* ------------------------------------------------------------------ state */
+
+var S = {
+  user: null,
+  teams: [],          // selectable owner teams [{id,name,mine}]
+  teamId: "",         // "" = every team in the list
+  scope: "all",       // all | mine | team
+  kpi: "",            // active kpi filter key
+  owner: "",          // active owner filter (systemuser or team id)
+  cat: "",            // active process filter (label)
+  tasks: [],
+  deals: [],
+  loading: false
+};
+
+/* ------------------------------------------------------------------ data */
+
+/** Teams provisioned for apps are named as a bare guid with a _N suffix and are noise. */
+function isSystemTeam(name){
+  return !name || /^[0-9a-f]{32}_\d+$/i.test(name);
+}
+
+function loadTeams(){
+  // Membership alone is too narrow: an administrator typically belongs only to the default
+  // business unit team, which would leave the dashboard looking empty. List every real owner
+  // team instead and flag the ones the signed in user actually belongs to.
+  var mine = get("systemusers(" + S.user.id + ")/teammembership_association?$select=teamid")
+    .then(function(d){
+      var set = {};
+      (d.value || []).forEach(function(t){ set[t.teamid] = true; });
+      return set;
+    })
+    .catch(function(){ return {}; });
+
+  var all = get("teams?$select=teamid,name,isdefault&$filter=teamtype eq 0&$orderby=name")
+    .then(function(d){ return d.value || []; })
+    .catch(function(){ return []; });
+
+  return Promise.all([mine, all]).then(function(r){
+    var member = r[0];
+    S.teams = r[1]
+      .filter(function(t){ return !t.isdefault && !isSystemTeam(t.name); })
+      .map(function(t){ return { id: t.teamid, name: t.name, mine: !!member[t.teamid] }; });
+  });
+}
+
+/** Owner filter covering the user plus whichever teams are in scope. */
+/**
+ * Always retrieves the user plus every team in scope. The mine/team split is applied on the
+ * client so the segment counts stay stable and switching between them costs no round trip.
+ */
+function ownerFilter(){
+  var ids = [S.user.id];
+  var pool = S.teamId ? S.teams.filter(function(t){ return t.id === S.teamId; }) : S.teams;
+  pool.forEach(function(t){ ids.push(t.id); });
+  return "(" + ids.map(function(i){ return "_ownerid_value eq " + i; }).join(" or ") + ")";
+}
+
+/** Name of the team currently selected, or null when the whole list is in scope. */
+function selectedTeamName(){
+  var t = S.teams.filter(function(x){ return x.id === S.teamId; })[0];
+  return t ? t.name : null;
+}
+
+function loadTasks(){
+  var own = ownerFilter();
+  if (!own) { S.tasks = []; return Promise.resolve(); }
+  return get("tasks?$select=activityid,subject,scheduledend,prioritycode,_ownerid_value," +
+             "_regardingobjectid_value," + P + "sladue," + P + "stagename," +
+             P + "assignedteamname," + P + "availableoutcomes," + P + "mandatory" +
+             "&$filter=statecode eq 0 and _" + P + "sourcetask_value ne null and " + own +
+             "&$orderby=" + P + "sladue asc&$top=200")
+    .then(function(d){ S.tasks = d.value || []; });
+}
+
+function loadDeals(){
+  var own = ownerFilter();
+  if (!own) { S.deals = []; return Promise.resolve(); }
+  return get("opportunities?$select=opportunityid,name,estimatedvalue,estimatedclosedate," +
+             "prioritycode,createdon,_ownerid_value,_customerid_value," +
+             P + "closedue," + P + "taskstotal," + P + "tasksopen," +
+             P + "docstotal," + P + "docsreceived,_" + P + "appliedtemplate_value" +
+             "&$filter=statecode eq 0 and _" + P + "appliedtemplate_value ne null and " + own +
+             "&$orderby=" + P + "closedue asc&$top=100")
+    .then(function(d){ S.deals = d.value || []; })
+    .catch(function(){ S.deals = []; });
+}
+
+function reload(){
+  S.loading = true;
+  render();
+  return Promise.all([loadTasks(), loadDeals()])
+    .then(function(){ S.loading = false; render(); })
+    .catch(function(e){
+      S.loading = false;
+      document.getElementById("tasks").innerHTML =
+        '<div class="err">Could not load your work.<br>' + esc(e.message) + "</div>";
+    });
+}
+
+/* ------------------------------------------------------------------ derived */
+
+function isMine(r){ return r._ownerid_value === S.user.id; }
+
+/** The Everything / Assigned to me / Teams split, applied client side. */
+function inScope(r){
+  if (S.scope === "mine") return isMine(r);
+  if (S.scope === "team") return !isMine(r);
+  return true;
+}
+
+function kpiCounts(){
+  var deals = visibleDeals();
+  var c = { over:0, today:0, week:0, mine:0, deals:deals.length };
+  S.tasks.filter(inScope).filter(matchOwner).filter(matchCat).forEach(function(t){
+    var u = urgency(dueOf(t));
+    if (u.k === "over") c.over++;
+    else if (u.k === "today") c.today++;
+    else if (u.k === "week") c.week++;
+    if (isMine(t)) c.mine++;
+  });
+  return c;
+}
+
+/* ---- chart driven filters -------------------------------------------------
+   Owner and category narrow both lists; the urgency filter (S.kpi) applies to tasks only,
+   which is why the urgency chart is built from the owner/category filtered set rather than
+   from visibleTasks() - otherwise selecting a slice would collapse the chart to that slice. */
+
+function ownerIdOf(r){ return r._ownerid_value; }
+function ownerNameOf(r){
+  return r["_ownerid_value@OData.Community.Display.V1.FormattedValue"] || "Unassigned";
+}
+function matchOwner(r){ return !S.owner || ownerIdOf(r) === S.owner; }
+
+/** Process label for a deal, and for a task by way of the deal it regards. */
+function catOfDeal(c){
+  return c["_"+P+"appliedtemplate_value@OData.Community.Display.V1.FormattedValue"]
+         || "No process";
+}
+function dealCatIndex(){
+  var m = {};
+  S.deals.forEach(function(c){ m[c.opportunityid] = catOfDeal(c); });
+  return m;
+}
+function matchCat(t){
+  if (!S.cat) return true;
+  var id = t._regardingobjectid_value;
+  return id ? CATMAP[id] === S.cat : false;
+}
+var CATMAP = {};
+
+function visibleDeals(){
+  return S.deals.filter(inScope).filter(matchOwner).filter(function(c){
+    return !S.cat || catOfDeal(c) === S.cat;
+  });
+}
+
+/** Tasks after scope/owner/category but before the urgency filter. */
+function chartTasks(){
+  return S.tasks.filter(inScope).filter(matchOwner).filter(matchCat);
+}
+
+function visibleTasks(){
+  return chartTasks().filter(function(t){
+    if (!S.kpi) return true;
+    if (S.kpi === "mine") return isMine(t);
+    return urgency(dueOf(t)).k === S.kpi;
+  });
+}
+
+/* ------------------------------------------------------------------ charts */
+
+var C = { urg:null, own:null, cat:null };
+var COLORS = {
+  over:"#F4364C", today:"#C19C00", week:"#0F6CBD", later:"#7A8598", none:"#C8CDD4",
+  brand:"#0F6CBD", mine:"#6C4BB6", green:"#107C41", line:"#E3E7ED", muted:"#5B6472"
+};
+
+function chartsReady(){ return typeof Chart !== "undefined"; }
+
+/**
+ * Chart.js normalises options into a resolver proxy when a chart is constructed, so writing raw
+ * option objects back onto a live instance breaks scriptable option lookup. Rebuild instead.
+ */
+function mount(key, canvasId, type, data, opts){
+  if (C[key]) C[key].destroy();
+  C[key] = new Chart(document.getElementById(canvasId), { type:type, data:data, options:opts });
+  return C[key];
+}
+
+/** A chart click rebuilds that same chart, so let the event finish dispatching first. */
+function laterRender(){ setTimeout(render, 0); }
+
+if (chartsReady()){
+  Chart.defaults.font.family = '"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif';
+  Chart.defaults.font.size = 11;
+  Chart.defaults.color = COLORS.muted;
+  Chart.defaults.animation.duration = 260;
+  Chart.defaults.plugins.tooltip.backgroundColor = "#0F1B2D";
+  Chart.defaults.plugins.tooltip.padding = 8;
+  Chart.defaults.plugins.tooltip.cornerRadius = 6;
+  Chart.defaults.plugins.tooltip.displayColors = false;
+  Chart.defaults.maintainAspectRatio = false;
+}
+
+/** Dims every element except the selected one so the active filter reads off the chart. */
+function pick(colors, keys, active){
+  return colors.map(function(c, i){ return (!active || keys[i] === active) ? c : c + "40"; });
+}
+
+function toggleEmpty(id, empty){
+  var n = document.getElementById("none-" + id);
+  if (n) n.hidden = !empty;
+  var cv = document.getElementById("ch-" + id);
+  if (cv) cv.style.visibility = empty ? "hidden" : "visible";
+  return empty;
+}
+
+/* ---- 1. task urgency doughnut: click a slice to filter the task list ---- */
+
+function renderUrgencyChart(){
+  var list = chartTasks();
+  var order = [
+    { k:"over",  t:"Overdue" },
+    { k:"today", t:"Due today" },
+    { k:"week",  t:"Due this week" },
+    { k:"later", t:"Later" },
+    { k:"none",  t:"No due date" }
+  ];
+  var counts = {};
+  list.forEach(function(t){ var k = urgency(dueOf(t)).k; counts[k] = (counts[k] || 0) + 1; });
+
+  var keep = order.filter(function(o){ return counts[o.k]; });
+  if (toggleEmpty("urg", !keep.length)){ if (C.urg){ C.urg.destroy(); C.urg = null; } return; }
+
+  var keys = keep.map(function(o){ return o.k; });
+  var data = {
+    labels: keep.map(function(o){ return o.t; }),
+    datasets: [{
+      data: keep.map(function(o){ return counts[o.k]; }),
+      backgroundColor: pick(keep.map(function(o){ return COLORS[o.k]; }), keys, S.kpi),
+      borderColor:"#fff", borderWidth:2, hoverOffset:6
+    }]
+  };
+  var total = list.length;
+  var opts = {
+    cutout:"58%",
+    plugins:{
+      legend:{ position:"right",
+        labels:{ boxWidth:9, boxHeight:9, usePointStyle:true, pointStyle:"circle", padding:9 } },
+      tooltip:{ callbacks:{ label:function(c){
+        var v = c.parsed;
+        return c.label + ": " + v + " (" + Math.round(v / total * 100) + "%)";
+      } } }
+    },
+    onClick:function(e, els){
+      if (!els.length) return;
+      var k = keys[els[0].index];
+      S.kpi = (S.kpi === k) ? "" : k;      // urgency doughnut drives the same filter as the tiles
+      laterRender();
+    },
+    onHover:function(e, els){ e.native.target.style.cursor = els.length ? "pointer" : "default"; }
+  };
+  mount("urg", "ch-urg", "doughnut", data, opts);
+}
+
+/* ---- 2. workload by owner: horizontal bars, click to filter to one owner ---- */
+
+function renderOwnerChart(){
+  // Built from the scope + category filtered set but ignoring an owner selection, so the
+  // other owners stay visible (dimmed) and the filter can be switched without clearing it.
+  var list = S.tasks.filter(inScope).filter(matchCat).filter(function(t){
+    if (!S.kpi) return true;
+    if (S.kpi === "mine") return isMine(t);
+    return urgency(dueOf(t)).k === S.kpi;
+  });
+
+  var by = {};
+  list.forEach(function(t){
+    var id = ownerIdOf(t) || "none";
+    if (!by[id]) by[id] = { id:id, name:ownerNameOf(t), n:0, over:0, mine:isMine(t) };
+    by[id].n++;
+    if (urgency(dueOf(t)).k === "over") by[id].over++;
+  });
+  var rows = Object.keys(by).map(function(k){ return by[k]; })
+    .sort(function(a, b){ return b.n - a.n; })
+    .slice(0, 7);
+
+  if (toggleEmpty("own", !rows.length)){ if (C.own){ C.own.destroy(); C.own = null; } return; }
+
+  var ids = rows.map(function(r){ return r.id; });
+  var data = {
+    labels: rows.map(function(r){ return r.name; }),
+    datasets: [
+      { label:"Overdue", data:rows.map(function(r){ return r.over; }),
+        backgroundColor: pick(rows.map(function(){ return COLORS.over; }), ids, S.owner),
+        borderRadius:3, borderSkipped:false, barThickness:13, stack:"s" },
+      { label:"On track", data:rows.map(function(r){ return r.n - r.over; }),
+        backgroundColor: pick(rows.map(function(r){ return r.mine ? COLORS.mine : COLORS.brand; }), ids, S.owner),
+        borderRadius:3, borderSkipped:false, barThickness:13, stack:"s" }
+    ]
+  };
+  var opts = {
+    indexAxis:"y",
+    layout:{ padding:{ right:6 } },
+    scales:{
+      x:{ stacked:true, beginAtZero:true, border:{ display:false },
+          grid:{ color:COLORS.line }, ticks:{ precision:0, maxTicksLimit:5 } },
+      y:{ stacked:true, border:{ display:false }, grid:{ display:false },
+          ticks:{ autoSkip:false, crossAlign:"far",
+                  callback:function(v){
+                    var s = String(this.getLabelForValue(v));
+                    return s.length > 17 ? s.slice(0, 16) + "\u2026" : s;
+                  } } }
+    },
+    plugins:{
+      legend:{ display:true, position:"bottom",
+        labels:{ boxWidth:9, boxHeight:9, usePointStyle:true, pointStyle:"circle", padding:10 } },
+      tooltip:{ displayColors:true,
+        callbacks:{ title:function(c){ return rows[c[0].dataIndex].name; },
+                    afterBody:function(c){ return "Total " + rows[c[0].dataIndex].n + " open"; } } }
+    },
+    onClick:function(e, els){
+      if (!els.length) return;
+      var id = ids[els[0].index];
+      S.owner = (S.owner === id) ? "" : id;
+      laterRender();
+    },
+    onHover:function(e, els){ e.native.target.style.cursor = els.length ? "pointer" : "default"; }
+  };
+  mount("own", "ch-own", "bar", data, opts);
+}
+
+/* ---- 3. deals by process: stacked bars split by clock state ---- */
+
+function renderCategoryChart(){
+  var list = S.deals.filter(inScope).filter(matchOwner);
+  var by = {};
+  list.forEach(function(c){
+    var k = catOfDeal(c);
+    if (!by[k]) by[k] = { k:k, n:0, over:0 };
+    by[k].n++;
+    if (urgency(c[P+"closedue"]).k === "over") by[k].over++;
+  });
+  var rows = Object.keys(by).map(function(k){ return by[k]; })
+    .sort(function(a, b){ return b.n - a.n; })
+    .slice(0, 7);
+
+  if (toggleEmpty("cat", !rows.length)){ if (C.cat){ C.cat.destroy(); C.cat = null; } return; }
+
+  var keys = rows.map(function(r){ return r.k; });
+  var data = {
+    labels: keys,
+    datasets: [
+      { label:"Breaching", data:rows.map(function(r){ return r.over; }),
+        backgroundColor: pick(rows.map(function(){ return COLORS.over; }), keys, S.cat),
+        borderRadius:3, borderSkipped:false, barThickness:13, stack:"s" },
+      { label:"On track", data:rows.map(function(r){ return r.n - r.over; }),
+        backgroundColor: pick(rows.map(function(){ return COLORS.green; }), keys, S.cat),
+        borderRadius:3, borderSkipped:false, barThickness:13, stack:"s" }
+    ]
+  };
+  var opts = {
+    indexAxis:"y",
+    layout:{ padding:{ right:6 } },
+    scales:{
+      x:{ stacked:true, beginAtZero:true, border:{ display:false },
+          grid:{ color:COLORS.line }, ticks:{ precision:0, maxTicksLimit:5 } },
+      y:{ stacked:true, border:{ display:false }, grid:{ display:false },
+          ticks:{ autoSkip:false, crossAlign:"far",
+                  callback:function(v){
+                    var s = String(this.getLabelForValue(v));
+                    return s.length > 17 ? s.slice(0, 16) + "\u2026" : s;
+                  } } }
+    },
+    plugins:{
+      legend:{ display:true, position:"bottom",
+        labels:{ boxWidth:9, boxHeight:9, usePointStyle:true, pointStyle:"circle", padding:10 } },
+      tooltip:{ displayColors:true,
+        callbacks:{ afterBody:function(c){ return "Total " + rows[c[0].dataIndex].n + " deals"; } } }
+    },
+    onClick:function(e, els){
+      if (!els.length) return;
+      var k = keys[els[0].index];
+      S.cat = (S.cat === k) ? "" : k;
+      laterRender();
+    },
+    onHover:function(e, els){ e.native.target.style.cursor = els.length ? "pointer" : "default"; }
+  };
+  mount("cat", "ch-cat", "bar", data, opts);
+}
+
+function renderCharts(){
+  if (!chartsReady() || S.loading) return;
+  CATMAP = dealCatIndex();
+  renderUrgencyChart();
+  renderOwnerChart();
+  renderCategoryChart();
+}
+
+/* ---- active filter chips ---- */
+
+function ownerLabel(id){
+  var t = S.teams.filter(function(x){ return x.id === id; })[0];
+  if (t) return t.name;
+  if (id === S.user.id) return S.user.name || "Me";
+  var r = S.tasks.concat(S.deals).filter(function(x){ return ownerIdOf(x) === id; })[0];
+  return r ? ownerNameOf(r) : "Selected owner";
+}
+
+function renderChips(){
+  var labels = { over:"Overdue", today:"Due today", week:"Due this week", mine:"Assigned to me" };
+  var out = [];
+  if (S.kpi)   out.push({ f:"kpi",   k:"Urgency",  v:labels[S.kpi] || S.kpi });
+  if (S.owner) out.push({ f:"owner", k:"Owner",    v:ownerLabel(S.owner) });
+  if (S.cat)   out.push({ f:"cat",   k:"Category", v:S.cat });
+
+  var el = document.getElementById("chips");
+  el.innerHTML = out.length
+    ? out.map(function(c){
+        return '<span class="chip"><span>' + esc(c.k) + '</span><b>' + esc(c.v) + "</b>" +
+               '<button type="button" data-clear="' + c.f + '" title="Remove">\u00d7</button></span>';
+      }).join("") + '<button type="button" class="clear" data-clear="all">Clear all</button>'
+    : "";
+}
+
+function renderChartsAndChips(){ renderCharts(); renderChips(); }
+
+/* ------------------------------------------------------------------ render */
+
+function renderSeg(){
+  var mine = S.tasks.filter(isMine).length;
+  var team = S.tasks.length - mine;
+  var defs = [
+    { k:"all",  t:"Everything", n:S.tasks.length },
+    { k:"mine", t:"Assigned to me", n:mine },
+    { k:"team", t:selectedTeamName() || "Teams", n:team }
+  ];
+  document.getElementById("seg").innerHTML = defs.map(function(d){
+    return '<button type="button" data-scope="' + d.k + '" class="' +
+      (S.scope === d.k ? "on" : "") + '">' + esc(d.t) +
+      '<span class="n">' + d.n + "</span></button>";
+  }).join("");
+}
+
+function renderKpis(){
+  var c = kpiCounts();
+  var defs = [
+    { k:"over",  v:c.over,  t:"Overdue",            cls:"red" },
+    { k:"today", v:c.today, t:"Due today",          cls:"amber" },
+    { k:"week",  v:c.week,  t:"Due this week",      cls:"brand" },
+    { k:"mine",  v:c.mine,  t:"Assigned to me",     cls:"purple" },
+    { k:"",      v:c.deals, t:"Open deals in scope",cls:"green" }
+  ];
+  document.getElementById("kpis").innerHTML = defs.map(function(d){
+    var on = d.k && S.kpi === d.k;
+    return '<div class="kpi ' + d.cls + (on ? " on" : "") + '"' +
+      (d.k ? ' data-kpi="' + d.k + '"' : "") + '>' +
+      '<div class="v">' + d.v + "</div><div class=\"k\">" + esc(d.t) + "</div></div>";
+  }).join("");
+}
+
+function taskRow(t){
+  var due = dueOf(t), u = urgency(due);
+  var mine = isMine(t);
+  var owner = t["_ownerid_value@OData.Community.Display.V1.FormattedValue"] || "Unassigned";
+  var stage = t[P+"stagename"];
+  var reg = t["_regardingobjectid_value@OData.Community.Display.V1.FormattedValue"];
+  var outc = [];
+  try { outc = JSON.parse(t[P+"availableoutcomes"] || "[]"); } catch(e){}
+  var pri = t.prioritycode === 1 ? "p1" : (t.prioritycode === 2 ? "p2" : "");
+
+  return '<div class="row" data-e="task" data-id="' + t.activityid + '">' +
+    '<div class="av' + (mine ? "" : " team") + '">' + esc(initials(owner)) + "</div>" +
+    '<div class="rmain">' +
+      '<div class="rt"><span class="pri ' + pri + '"></span>' + esc(t.subject || "(untitled task)") + "</div>" +
+      '<div class="rm">' + esc(owner) +
+        (reg ? '<span class="sep">·</span>' + esc(reg) : "") +
+        (stage ? '<span class="sep">·</span>' + esc(stage) : "") +
+        (outc.length ? '<span class="sep">·</span>' + outc.length + " outcome" + (outc.length>1?"s":"") : "") +
+      "</div>" +
+    "</div>" +
+    '<div class="rr">' +
+      '<span class="due ' + u.cls + '">' + esc(u.label) + "</span>" +
+      (mine ? '<span class="chip mine">MINE</span>'
+            : (t[P+"assignedteamname"] ? '<span class="chip stage">TEAM</span>' : "")) +
+    "</div></div>";
+}
+
+function renderTasks(){
+  var el = document.getElementById("tasks");
+  if (S.loading){
+    el.innerHTML = '<div style="padding:12px"><div class="skl" style="width:70%"></div>' +
+                   '<div class="skl"></div><div class="skl" style="width:85%"></div></div>';
+    return;
+  }
+  var list = visibleTasks();
+  document.getElementById("tn").textContent = list.length;
+  if (!list.length){
+    el.innerHTML = '<div class="empty"><b>Nothing to action</b>' +
+      (S.kpi ? "No tasks match this filter." : "There are no open tasks in this scope.") + "</div>";
+    return;
+  }
+  var groups = [
+    { k:"over",  t:"Overdue",       cls:"red" },
+    { k:"today", t:"Due today",     cls:"amber" },
+    { k:"week",  t:"Next 7 days",   cls:"brand" },
+    { k:"later", t:"Later",         cls:"" },
+    { k:"none",  t:"No due date",   cls:"" }
+  ];
+  var html = "";
+  groups.forEach(function(g){
+    var rows = list.filter(function(t){ return urgency(dueOf(t)).k === g.k; });
+    if (!rows.length) return;
+    html += '<div class="grp ' + g.cls + '"><span class="sw"></span>' + esc(g.t) +
+            ' <span style="opacity:.6">' + rows.length + "</span></div>";
+    html += rows.map(taskRow).join("");
+  });
+  el.innerHTML = html;
+}
+
+function dealRow(c){
+  var u = urgency(c[P+"closedue"]);
+  var owner = c["_ownerid_value@OData.Community.Display.V1.FormattedValue"] || "Unassigned";
+  var cust = c["_customerid_value@OData.Community.Display.V1.FormattedValue"];
+  var cat = c["_"+P+"appliedtemplate_value@OData.Community.Display.V1.FormattedValue"];
+  var val = c["estimatedvalue@OData.Community.Display.V1.FormattedValue"];
+  var total = c[P+"taskstotal"] || 0, open = c[P+"tasksopen"] || 0;
+  var done = Math.max(0, total - open);
+  var pct = total ? Math.round(done / total * 100) : 0;
+  var docs = c[P+"docstotal"] || 0, got = c[P+"docsreceived"] || 0;
+  var pri = c.prioritycode === 1 ? "p1" : (c.prioritycode === 2 ? "p2" : "");
+
+  return '<div class="row" data-e="opportunity" data-id="' + c.opportunityid + '">' +
+    '<div class="av' + (isMine(c) ? "" : " team") + '">' + esc(initials(owner)) + "</div>" +
+    '<div class="rmain">' +
+      '<div class="rt"><span class="pri ' + pri + '"></span>' + esc(c.name || "(untitled deal)") + "</div>" +
+      '<div class="rm">' + esc(val || "") +
+        (cust ? '<span class="sep">·</span>' + esc(cust) : "") +
+        (cat ? '<span class="sep">·</span>' + esc(cat) : "") +
+      "</div>" +
+      // The bar is completion, not urgency: colouring it red for an overdue deal makes an
+      // almost finished deal look like a failing one. Urgency stays on the due text.
+      (total ? '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
+               '<div class="rm">' + done + " of " + total + " tasks done" +
+               (docs ? '<span class="sep">·</span>' + got + "/" + docs + " docs" : "") + "</div>"
+            : "") +
+    "</div>" +
+    '<div class="rr"><span class="due ' + u.cls + '">' + esc(u.label) + "</span></div></div>";
+}
+
+function renderDeals(){
+  var el = document.getElementById("deals");
+  if (S.loading){
+    el.innerHTML = '<div style="padding:12px"><div class="skl" style="width:60%"></div>' +
+                   '<div class="skl"></div></div>';
+    return;
+  }
+  var list = visibleDeals();
+  document.getElementById("cn").textContent = list.length;
+  el.innerHTML = list.length
+    ? list.map(dealRow).join("")
+    : '<div class="empty"><b>No open deals</b>Nothing is assigned in this scope.</div>';
+}
+
+function render(){
+  CATMAP = dealCatIndex();
+  renderSeg();
+  renderKpis();
+  renderChartsAndChips();
+  renderTasks();
+  renderDeals();
+  document.getElementById("foot").textContent =
+    S.loading ? "Loading…" : "Updated " + new Date().toLocaleTimeString();
+}
+
+/* ------------------------------------------------------------------ events */
+
+document.getElementById("seg").addEventListener("click", function(e){
+  var b = e.target.closest("button[data-scope]");
+  if (!b) return;
+  S.scope = b.getAttribute("data-scope");
+  S.kpi = ""; S.owner = ""; S.cat = "";
+  render();
+});
+
+document.getElementById("chips").addEventListener("click", function(e){
+  var b = e.target.closest("[data-clear]");
+  if (!b) return;
+  var f = b.getAttribute("data-clear");
+  if (f === "all"){ S.kpi = ""; S.owner = ""; S.cat = ""; }
+  else S[f] = "";
+  render();
+});
+
+document.getElementById("kpis").addEventListener("click", function(e){
+  var k = e.target.closest(".kpi[data-kpi]");
+  if (!k) return;
+  var v = k.getAttribute("data-kpi");
+  S.kpi = (S.kpi === v) ? "" : v;
+  render();
+});
+
+document.getElementById("teamsel").addEventListener("change", function(e){
+  S.teamId = e.target.value;
+  S.kpi = ""; S.owner = ""; S.cat = "";   // owners and categories differ per team
+  reload();
+});
+
+document.getElementById("refresh").addEventListener("click", reload);
+
+document.body.addEventListener("click", function(e){
+  var r = e.target.closest(".row[data-id]");
+  if (!r) return;
+  openRec(r.getAttribute("data-e"), r.getAttribute("data-id"));
+});
+
+/* ------------------------------------------------------------------ boot */
+
+(function boot(){
+  S.user = me();
+  if (!S.user){
+    document.getElementById("tasks").innerHTML =
+      '<div class="err">Could not identify the signed in user. ' +
+      "Open this dashboard inside a model driven app.</div>";
+    return;
+  }
+  document.getElementById("who").textContent = S.user.name ? "· " + S.user.name : "";
+
+  loadTeams().then(function(){
+    var sel = document.getElementById("teamsel");
+    sel.innerHTML = '<option value="">All teams (' + S.teams.length + ")</option>" +
+      S.teams.map(function(t){
+        return '<option value="' + t.id + '">' + esc(t.name) +
+               (t.mine ? "  \u2022 member" : "") + "</option>";
+      }).join("");
+    if (!S.teams.length) sel.innerHTML = '<option value="">No teams</option>';
+    return reload();
+  });
+})();
+</script>
+</body>
+</html>

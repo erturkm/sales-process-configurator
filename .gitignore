@@ -1,0 +1,15 @@
+# Strong-name signing keys are never committed
+*.snk
+*.pem
+
+# Build output
+bin/
+obj/
+__pycache__/
+*.pyc
+
+# Local
+*.log
+.DS_Store
+.vscode/
+.idea/

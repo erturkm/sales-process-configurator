@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Required documents</title>
+<style>
+:root{
+  --ink:#0F1B2D; --muted:#5B6472; --line:#E3E7ED; --bg:#F6F8FB;
+  --brand:#0F6CBD; --red:#F4364C; --green:#107C41; --amber:#C19C00;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;padding:12px;font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  font-size:12.5px;color:var(--ink);background:#fff;
+}
+.hd{display:flex;align-items:baseline;gap:8px}
+.hd h3{margin:0;font-size:13px;font-weight:600}
+.hd .pill{
+  font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  border-radius:20px;padding:2px 8px;white-space:nowrap;background:#EAF2FB;color:var(--brand);
+}
+.hd .pill.ok{background:#E9F5EE;color:var(--green)}
+.hd .pill.bad{background:#FDECEE;color:var(--red)}
+.bar{height:5px;border-radius:3px;background:var(--line);margin:9px 0 14px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--green);transition:width .3s}
+
+.doc{
+  border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-bottom:8px;
+  transition:.14s;position:relative;
+}
+.doc.drag{border-color:var(--brand);background:#F2F7FC;box-shadow:0 0 0 3px rgba(15,108,189,.12)}
+.doc.in{background:#FAFCFB;border-color:#CFE6D9}
+.doc .top{display:flex;align-items:flex-start;gap:9px}
+.tick{
+  width:17px;height:17px;border-radius:50%;border:2px solid #C7CDD6;flex:none;margin-top:1px;
+  position:relative;background:#fff;
+}
+.doc.in .tick{background:var(--green);border-color:var(--green)}
+.doc.in .tick:after{
+  content:"";position:absolute;left:4.5px;top:1.5px;width:4px;height:8px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg);
+}
+.doc.req .tick{border-color:var(--amber)}
+.doc.in.req .tick{border-color:var(--green)}
+.nm{flex:1;min-width:0}
+.nm b{font-weight:600;display:block;line-height:1.35}
+.nm .meta{font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.5}
+.tag{
+  display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.3px;border-radius:4px;
+  padding:1px 6px;margin-right:5px;
+}
+.tag.req{background:#FBF4DF;color:#8A6D00}
+.tag.opt{background:#EFF1F4;color:var(--muted)}
+.tag.late{background:#FDECEE;color:var(--red)}
+.tag.ok{background:#E9F5EE;color:var(--green)}
+
+.files{margin:7px 0 0;padding:0;list-style:none}
+.files li{
+  display:flex;align-items:center;gap:7px;font-size:11px;padding:4px 0;
+  border-top:1px dashed var(--line);
+}
+.files li:first-child{border-top:none;padding-top:6px}
+.files a{color:var(--brand);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.files a:hover{text-decoration:underline}
+.files .sz{color:var(--muted);font-size:10px;white-space:nowrap}
+.fi{
+  width:18px;height:18px;border-radius:4px;background:var(--brand);color:#fff;flex:none;
+  font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;
+}
+
+.act{display:flex;gap:7px;margin-top:8px;align-items:center}
+button{
+  font-family:inherit;font-size:11.5px;border-radius:6px;cursor:pointer;padding:5px 11px;
+  border:1px solid var(--line);background:#fff;color:var(--ink);font-weight:600;
+}
+button:hover{background:var(--bg);border-color:#C7CDD6}
+button.up{background:var(--brand);border-color:var(--brand);color:#fff}
+button.up:hover{background:#0C5CA3}
+button:disabled{opacity:.5;cursor:default}
+.hint{font-size:10px;color:var(--muted)}
+input[type=file]{display:none}
+.empty{color:var(--muted);font-size:11.5px;padding:14px 0;line-height:1.5}
+.err{color:var(--red);font-size:11.5px;padding:8px 0}
+.skl{height:9px;border-radius:5px;background:var(--bg);margin:9px 0}
+</style>
+</head>
+<body>
+<div id="root"><div class="skl" style="width:55%"></div><div class="skl"></div><div class="skl" style="width:75%"></div></div>
+<input type="file" id="picker" multiple />
+
+<script>
+"use strict";
+var P = "spc_";
+var MAX_BYTES = 30 * 1024 * 1024;
+
+function xrm(){
+  var w = window;
+  for (var i = 0; i < 6 && w; i++){
+    if (w.Xrm && w.Xrm.WebApi) return w.Xrm;
+    if (w === w.parent) break;
+    w = w.parent;
+  }
+  return null;
+}
+function clientUrl(){
+  var x = xrm();
+  if (x && x.Utility && x.Utility.getGlobalContext){
+    try { return x.Utility.getGlobalContext().getClientUrl(); } catch(e){}
+  }
+  return "";
+}
+function apiRoot(){ return clientUrl() + "/api/data/v9.2/"; }
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+  });
+}
+function dealId(){
+  var x = xrm();
+  try {
+    if (x && x.Page && x.Page.data && x.Page.data.entity){
+      var id = x.Page.data.entity.getId();
+      if (id) return id.replace(/[{}]/g, "");
+    }
+  } catch(e){}
+  var sp = new URLSearchParams(location.search);
+  var d = sp.get("id") || sp.get("recordId");
+  if (!d && sp.get("data")){
+    try { d = new URLSearchParams(decodeURIComponent(sp.get("data"))).get("id"); } catch(e){}
+  }
+  return d ? d.replace(/[{}]/g, "") : null;
+}
+function req(method, path, body){
+  var h = { Accept: "application/json", "OData-Version": "4.0", "OData-MaxVersion": "4.0" };
+  if (body) h["Content-Type"] = "application/json; charset=utf-8";
+  return fetch(apiRoot() + path, {
+    method: method, credentials: "same-origin", headers: h,
+    body: body ? JSON.stringify(body) : undefined
+  }).then(function(r){
+    if (!r.ok) return r.text().then(function(t){
+      var msg = t;
+      try { msg = JSON.parse(t).error.message; } catch(e){}
+      throw new Error(msg || ("HTTP " + r.status));
+    });
+    return r.status === 204 ? null : r.json();
+  });
+}
+
+var root = document.getElementById("root");
+var picker = document.getElementById("picker");
+var S = { id: null, docs: [], busy: null };
+
+function kb(n){
+  if (!n) return "";
+  return n < 1024 ? n + " KB" : (n / 1024).toFixed(1) + " MB";
+}
+function ext(name){
+  var m = /\.([A-Za-z0-9]{1,5})$/.exec(name || "");
+  return (m ? m[1] : "FILE").toUpperCase().slice(0, 4);
+}
+function overdue(d){
+  return !d.received && d.due && new Date(d.due) < new Date();
+}
+
+function docHtml(d){
+  var cls = "doc" + (d.received ? " in" : "") + (d.mandatory ? " req" : "");
+  var tags = d.received ? '<span class="tag ok">Received</span>'
+           : (d.mandatory ? '<span class="tag req">Required</span>'
+                          : '<span class="tag opt">Optional</span>');
+  if (overdue(d)) tags += '<span class="tag late">Overdue</span>';
+
+  var meta = [];
+  if (d.owner) meta.push(esc(d.owner));
+  if (d.received && d.receivedOn)
+    meta.push("received " + new Date(d.receivedOn).toLocaleDateString([], { month:"short", day:"numeric" }));
+  else if (d.due)
+    meta.push("due " + new Date(d.due).toLocaleDateString([], { month:"short", day:"numeric" }));
+
+  var files = (d.files || []).map(function(f){
+    return "<li>" + '<span class="fi">' + esc(ext(f.fileName)) + "</span>"
+         + '<a href="#" data-file="' + esc(f.id) + '" title="' + esc(f.fileName) + '">'
+         + esc(f.fileName) + "</a>"
+         + '<span class="sz">' + esc(kb(f.size)) + "</span>"
+         + '<button data-del="' + esc(f.id) + '" title="Remove" '
+         + 'style="padding:1px 6px;font-size:11px;line-height:1.2">&times;</button></li>';
+  }).join("");
+
+  var busy = S.busy === d.id;
+  return '<div class="' + cls + '" data-doc="' + esc(d.id) + '">'
+    + '<div class="top"><div class="tick"></div><div class="nm"><b>' + esc(d.name) + "</b>"
+    + '<div class="meta">' + tags + meta.join(" &middot; ") + "</div></div></div>"
+    + (files ? '<ul class="files">' + files + "</ul>" : "")
+    + '<div class="act">'
+    + '<button class="up" data-add="' + esc(d.id) + '"' + (busy ? " disabled" : "") + ">"
+    + (busy ? "Uploading&hellip;" : (files ? "Add another" : "Upload")) + "</button>"
+    + (d.templateUrl ? '<button data-tpl="' + esc(d.templateUrl) + '">Template</button>' : "")
+    + (!files ? '<span class="hint">or drop a file here</span>' : "")
+    + "</div></div>";
+}
+
+function paint(){
+  var docs = S.docs;
+  if (!docs.length){
+    root.innerHTML = '<div class="hd"><h3>Required documents</h3></div>'
+      + '<div class="empty">No document package is attached to this deal.</div>';
+    return;
+  }
+  var need = docs.filter(function(d){ return d.mandatory; });
+  var got = need.filter(function(d){ return d.received; }).length;
+  var late = docs.some(overdue);
+  var cls = got === need.length ? "ok" : (late ? "bad" : "");
+  var pct = need.length ? Math.round(got / need.length * 100) : 100;
+
+  root.innerHTML = '<div class="hd"><h3>Required documents</h3>'
+    + '<span class="pill ' + cls + '">' + got + " / " + need.length + " required</span></div>"
+    + '<div class="bar"><i style="width:' + pct + '%"></i></div>'
+    + docs.map(docHtml).join("");
+  wire();
+}
+
+function wire(){
+  Array.prototype.forEach.call(root.querySelectorAll("[data-add]"), function(b){
+    b.onclick = function(){ choose(b.getAttribute("data-add")); };
+  });
+  Array.prototype.forEach.call(root.querySelectorAll("[data-file]"), function(a){
+    a.onclick = function(e){ e.preventDefault(); download(a.getAttribute("data-file")); };
+  });
+  Array.prototype.forEach.call(root.querySelectorAll("[data-del]"), function(b){
+    b.onclick = function(){ remove(b.getAttribute("data-del")); };
+  });
+  Array.prototype.forEach.call(root.querySelectorAll("[data-tpl]"), function(b){
+    b.onclick = function(){ window.open(b.getAttribute("data-tpl"), "_blank"); };
+  });
+  Array.prototype.forEach.call(root.querySelectorAll("[data-doc]"), function(box){
+    var id = box.getAttribute("data-doc");
+    box.ondragover = function(e){ e.preventDefault(); box.classList.add("drag"); };
+    box.ondragleave = function(){ box.classList.remove("drag"); };
+    box.ondrop = function(e){
+      e.preventDefault();
+      box.classList.remove("drag");
+      if (e.dataTransfer && e.dataTransfer.files.length) upload(id, e.dataTransfer.files);
+    };
+  });
+}
+
+function choose(docId){
+  picker.value = "";
+  picker.onchange = function(){
+    if (picker.files.length) upload(docId, picker.files);
+  };
+  picker.click();
+}
+
+function readFile(f){
+  return new Promise(function(res, rej){
+    var r = new FileReader();
+    r.onload = function(){ res(String(r.result).split(",")[1]); };
+    r.onerror = function(){ rej(new Error("Could not read " + f.name)); };
+    r.readAsDataURL(f);
+  });
+}
+
+/**
+ * Files land as notes on the deal, tagged "[requirement name]" in the subject so the
+ * server can tie each attachment back to its checklist row.
+ */
+function upload(docId, fileList){
+  var doc = S.docs.filter(function(d){ return d.id === docId; })[0];
+  if (!doc || S.busy) return;
+  var files = Array.prototype.slice.call(fileList);
+  var big = files.filter(function(f){ return f.size > MAX_BYTES; });
+  if (big.length){
+    alert(big[0].name + " is larger than 30 MB.");
+    return;
+  }
+  S.busy = docId;
+  paint();
+
+  var chain = files.reduce(function(pr, f){
+    return pr.then(function(){
+      return readFile(f).then(function(b64){
+        return req("POST", "annotations", {
+          subject: "[" + doc.name + "] " + f.name,
+          notetext: "Uploaded from the deal document checklist.",
+          filename: f.name,
+          mimetype: f.type || "application/octet-stream",
+          documentbody: b64,
+          "objectid_opportunity@odata.bind": "/opportunities(" + S.id + ")"
+        });
+      });
+    });
+  }, Promise.resolve());
+
+  chain
+    .then(function(){
+      if (doc.received) return null;
+      return req("PATCH", P + "opportunityrequireddocuments(" + docId + ")", (function(){
+        var b = {};
+        b[P + "received"] = true;
+        b[P + "receivedon"] = new Date().toISOString();
+        return b;
+      })());
+    })
+    .then(function(){ S.busy = null; return load(); })
+    .catch(function(e){
+      S.busy = null;
+      paint();
+      root.insertAdjacentHTML("beforeend", '<div class="err">' + esc(e.message) + "</div>");
+    });
+}
+
+function download(fileId){
+  req("GET", "annotations(" + fileId + ")?$select=filename,mimetype,documentbody")
+    .then(function(a){
+      var bin = atob(a.documentbody), arr = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      var url = URL.createObjectURL(new Blob([arr], { type: a.mimetype || "application/octet-stream" }));
+      var link = document.createElement("a");
+      link.href = url;
+      link.download = a.filename;
+      link.click();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    })
+    .catch(function(e){
+      root.insertAdjacentHTML("beforeend", '<div class="err">' + esc(e.message) + "</div>");
+    });
+}
+
+function remove(fileId){
+  if (!confirm("Remove this file from the deal?")) return;
+  req("DELETE", "annotations(" + fileId + ")")
+    .then(reconcile)
+    .catch(function(e){
+      root.insertAdjacentHTML("beforeend", '<div class="err">' + esc(e.message) + "</div>");
+    });
+}
+
+/** After a delete, a requirement with no files left is no longer satisfied. */
+function reconcile(){
+  return load().then(function(){
+    var stale = S.docs.filter(function(d){ return d.received && !(d.files || []).length; });
+    if (!stale.length) return null;
+    return Promise.all(stale.map(function(d){
+      var b = {};
+      b[P + "received"] = false;
+      b[P + "receivedon"] = null;
+      return req("PATCH", P + "opportunityrequireddocuments(" + d.id + ")", b);
+    })).then(load);
+  });
+}
+
+function load(){
+  var id = dealId();
+  if (!id){ root.innerHTML = '<div class="empty">Save the deal to track its documents.</div>'; return Promise.resolve(); }
+  S.id = id;
+  return req("POST", P + "GetOpportunityView", { OpportunityId: id })
+    .then(function(d){
+      S.docs = JSON.parse(d.View).documents || [];
+      paint();
+    })
+    .catch(function(e){ root.innerHTML = '<div class="err">' + esc(e.message) + "</div>"; });
+}
+
+load();
+window.addEventListener("focus", function(){ if (!S.busy) load(); });
+</script>
+</body>
+</html>

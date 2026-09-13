@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sales process</title>
+<style>
+:root{
+  --ink:#0F1B2D; --muted:#5B6472; --line:#E3E7ED; --bg:#F6F8FB;
+  --brand:#0F6CBD; --red:#F4364C; --green:#107C41; --amber:#C19C00; --grey:#B4BAC4;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;padding:12px;font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  font-size:12.5px;color:var(--ink);background:#fff;
+}
+.hd{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
+.hd h3{margin:0;font-size:13px;font-weight:600;letter-spacing:-.1px}
+.hd .pill{
+  font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  background:#EAF2FB;color:var(--brand);border-radius:20px;padding:2px 8px;white-space:nowrap;
+}
+.sub{color:var(--muted);font-size:11px;margin:2px 0 12px;line-height:1.45}
+
+/* ---------- stage rail ---------- */
+.stages{display:flex;align-items:flex-start;margin:0 0 4px;padding:0 2px}
+.stg{flex:1;text-align:center;position:relative;min-width:0}
+.stg .bar{height:5px;border-radius:3px;background:var(--line);margin:0 2px 6px}
+.stg.done .bar{background:var(--green)}
+.stg.now  .bar{background:var(--brand)}
+.stg .nm{
+  font-size:10.5px;color:var(--muted);line-height:1.25;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.stg.now .nm{color:var(--brand);font-weight:700}
+.stg.done .nm{color:var(--ink)}
+.legend{display:flex;gap:10px;font-size:10px;color:var(--muted);margin:8px 0 14px}
+.legend b{font-weight:600;color:var(--ink)}
+
+
+/* ---------- deal clock ----------
+   Opportunity cannot carry platform SLAs (IsSLAEnabled is false on the table and is not
+   settable on a system table through the API), so there are no slakpiinstance rows for the
+   Modern SLA Timer PCF to bind to. The engine already computes the qualification and close
+   targets onto the deal itself, so the dials are drawn from those columns instead. */
+.clock{display:flex;gap:10px;margin:0 0 14px}
+.kpi{
+  flex:1;min-width:0;display:flex;align-items:center;gap:9px;
+  border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg);
+}
+.kpi .dial{position:relative;width:38px;height:38px;flex:none}
+.kpi .dial svg{transform:rotate(-90deg);display:block}
+.kpi .dial i{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-style:normal;
+}
+.kpi .txt{min-width:0}
+.kpi .lab{
+  font-size:9.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);
+}
+.kpi .val{font-size:13px;font-weight:600;line-height:1.25;white-space:nowrap}
+.kpi .due{font-size:10px;color:var(--muted);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.kpi.ok   .val{color:var(--green)} .kpi.ok   .dial i{color:var(--green)}
+.kpi.warn .val{color:var(--amber)} .kpi.warn .dial i{color:var(--amber)}
+.kpi.over .val{color:var(--red)}   .kpi.over .dial i{color:var(--red)}
+.kpi.done .val{color:var(--green)} .kpi.idle .val{color:var(--muted)}
+
+/* ---------- timeline ---------- */
+.tl{position:relative;padding-left:26px}
+.tl:before{
+  content:"";position:absolute;left:9px;top:8px;bottom:10px;width:2px;background:var(--line);
+}
+.ti{position:relative;padding:0 0 14px}
+.ti .dot{
+  position:absolute;left:-22px;top:2px;width:14px;height:14px;border-radius:50%;
+  background:#fff;border:2.5px solid var(--grey);
+}
+.ti.done .dot{background:var(--green);border-color:var(--green)}
+.ti.done .dot:after{
+  content:"";position:absolute;left:3px;top:.5px;width:3px;height:7px;
+  border:solid #fff;border-width:0 1.8px 1.8px 0;transform:rotate(42deg);
+}
+.ti.now .dot{border-color:var(--brand);box-shadow:0 0 0 3px rgba(15,108,189,.16)}
+.ti.late .dot{border-color:var(--red);box-shadow:0 0 0 3px rgba(244,54,76,.14)}
+.ti .nm{font-weight:600;line-height:1.35}
+.ti.done .nm{color:var(--muted);font-weight:500}
+.ti .meta{font-size:10.5px;color:var(--muted);margin-top:2px;line-height:1.5}
+.ti .meta .sep{opacity:.45;margin:0 5px}
+.chip{
+  display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.3px;
+  border-radius:4px;padding:1px 6px;margin-right:5px;vertical-align:1px;
+}
+.chip.now{background:#EAF2FB;color:var(--brand)}
+.chip.late{background:#FDECEE;color:var(--red)}
+.chip.warn{background:#FBF4DF;color:#8A6D00}
+.chip.ok{background:#E9F5EE;color:var(--green)}
+.outc{
+  display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:var(--green);
+  font-weight:600;margin-top:3px;
+}
+.outc:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--green)}
+a.open{color:var(--brand);text-decoration:none;font-size:10.5px;font-weight:600}
+a.open:hover{text-decoration:underline}
+.empty{color:var(--muted);font-size:11.5px;padding:14px 0;line-height:1.5}
+.err{color:var(--red);font-size:11.5px;padding:10px 0}
+.skl{height:9px;border-radius:5px;background:var(--bg);margin:9px 0}
+</style>
+</head>
+<body>
+<div id="root"><div class="skl" style="width:60%"></div><div class="skl"></div><div class="skl" style="width:80%"></div></div>
+
+<script>
+"use strict";
+var P = "spc_";
+
+function xrm(){
+  var w = window;
+  for (var i = 0; i < 6 && w; i++){
+    if (w.Xrm && w.Xrm.WebApi) return w.Xrm;
+    if (w === w.parent) break;
+    w = w.parent;
+  }
+  return null;
+}
+function clientUrl(){
+  var x = xrm();
+  if (x && x.Utility && x.Utility.getGlobalContext){
+    try { return x.Utility.getGlobalContext().getClientUrl(); } catch(e){}
+  }
+  return "";
+}
+function apiRoot(){ return clientUrl() + "/api/data/v9.2/"; }
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+  });
+}
+function dealId(){
+  var x = xrm();
+  try {
+    if (x && x.Page && x.Page.data && x.Page.data.entity){
+      var id = x.Page.data.entity.getId();
+      if (id) return id.replace(/[{}]/g, "");
+    }
+  } catch(e){}
+  var sp = new URLSearchParams(location.search);
+  var d = sp.get("id") || sp.get("recordId");
+  if (!d && sp.get("data")){
+    try { d = new URLSearchParams(decodeURIComponent(sp.get("data"))).get("id"); } catch(e){}
+  }
+  return d ? d.replace(/[{}]/g, "") : null;
+}
+
+var root = document.getElementById("root");
+
+function fmtDue(iso){
+  if (!iso) return null;
+  var d = new Date(iso), now = new Date();
+  var mins = Math.round((d - now) / 60000);
+  var abs = Math.abs(mins);
+  var span = abs < 60 ? abs + "m"
+           : abs < 2880 ? Math.round(abs / 60) + "h"
+           : Math.round(abs / 1440) + "d";
+  return { late: mins < 0, text: mins < 0 ? span + " overdue" : "due in " + span,
+           stamp: d.toLocaleString([], { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" }) };
+}
+
+function stageRail(bpf){
+  if (!bpf || !bpf.stages || !bpf.stages.length) return "";
+  var cur = bpf.stages.map(function(s){ return s.name; }).indexOf(bpf.currentStage);
+  var cells = bpf.stages.map(function(s, i){
+    var cls = cur < 0 ? "" : (i < cur ? "done" : (i === cur ? "now" : ""));
+    return '<div class="stg ' + cls + '"><div class="bar"></div>'
+         + '<div class="nm" title="' + esc(s.name) + '">' + esc(s.name) + "</div></div>";
+  }).join("");
+  var pos = cur < 0 ? "Not started" : "Stage " + (cur + 1) + " of " + bpf.stages.length;
+  return '<div class="stages">' + cells + "</div>"
+       + '<div class="legend"><span><b>' + esc(bpf.name || "Business process") + "</b></span>"
+       + "<span>" + esc(pos) + "</span></div>";
+}
+
+function taskItem(t){
+  var done = t.state === 1;
+  var due = fmtDue(t.due);
+  var late = !done && due && due.late;
+  var cls = done ? "done" : (late ? "late" : "now");
+
+  var chips = "";
+  if (done) chips += '<span class="chip ok">Done</span>';
+  else if (late) chips += '<span class="chip late">' + esc(due.text) + "</span>";
+  else if (due) chips += '<span class="chip now">' + esc(due.text) + "</span>";
+  else chips += '<span class="chip now">Open</span>';
+  if (!done && t.mandatory) chips += '<span class="chip warn">Required</span>';
+
+  var meta = [];
+  if (t.owner) meta.push(esc(t.owner));
+  if (t.stageName) meta.push(esc(t.stageName));
+  if (due) meta.push(esc(due.stamp));
+
+  var out = "";
+  if (done && t.outcome) out = '<div class="outc">' + esc(t.outcome) + "</div>";
+  else if (!done && t.outcomeCount) {
+    out = '<div class="meta"><a class="open" href="#" data-task="' + esc(t.id) + '">Record outcome ('
+        + t.outcomeCount + " options) &rsaquo;</a></div>";
+  }
+
+  return '<div class="ti ' + cls + '"><div class="dot"></div>'
+       + '<div class="nm">' + esc(t.subject || "(untitled task)") + "</div>"
+       + '<div class="meta">' + chips + meta.join('<span class="sep">|</span>') + "</div>"
+       + out + "</div>";
+}
+
+
+/* ------------------------------------------------------------------ deal clock */
+/* 1 in progress, 2 nearing breach, 3 met, 4 breached, 5 paused - the spc_*status option sets. */
+var CLOCK_TICK = null;
+
+function fmtLeft(ms){
+  var over = ms < 0; var a = Math.abs(ms);
+  var d = Math.floor(a / 86400000), h = Math.floor(a % 86400000 / 3600000),
+      m = Math.floor(a % 3600000 / 60000);
+  var t = d ? d + "d " + h + "h" : (h ? h + "h " + m + "m" : m + "m");
+  return over ? t + " over" : t + " left";
+}
+function fmtDue(iso){
+  var d = new Date(iso);
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" })
+       + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+/** One dial. `frac` is how much of the window is spent, clamped to 0..1. */
+function dial(frac, cls, glyph){
+  var R = 16, C = 2 * Math.PI * R;
+  var col = cls === "over" ? "var(--red)" : cls === "warn" ? "var(--amber)"
+          : cls === "done" ? "var(--green)" : cls === "idle" ? "var(--grey)" : "var(--brand)";
+  return '<div class="dial"><svg width="38" height="38" viewBox="0 0 38 38">'
+    + '<circle cx="19" cy="19" r="' + R + '" fill="none" stroke="var(--line)" stroke-width="4"/>'
+    + '<circle cx="19" cy="19" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="4"'
+    + ' stroke-linecap="round" stroke-dasharray="' + C + '"'
+    + ' stroke-dashoffset="' + (C * (1 - frac)) + '"/>'
+    + "</svg>" + (glyph ? "<i>" + glyph + "</i>" : "") + "</div>";
+}
+
+function kpiCard(label, dueIso, status, startIso){
+  if (status === 3) return '<div class="kpi done">' + dial(1, "done", "\u2713")
+    + '<div class="txt"><div class="lab">' + esc(label) + '</div>'
+    + '<div class="val">Met</div>'
+    + (dueIso ? '<div class="due">target ' + esc(fmtDue(dueIso)) + "</div>" : "")
+    + "</div></div>";
+  if (!dueIso) return '<div class="kpi idle">' + dial(0, "idle", "\u2013")
+    + '<div class="txt"><div class="lab">' + esc(label) + '</div>'
+    + '<div class="val">Not set</div>'
+    + '<div class="due">no target on this process</div></div>';
+
+  var due = new Date(dueIso).getTime(), now = Date.now();
+  var start = startIso ? new Date(startIso).getTime() : null;
+  var left = due - now;
+  // appliedOn is when the engine set this target. Without it, or if the process was
+  // re-applied after the target had already passed, fall back to a 7 day window so the ring
+  // still scales against something honest instead of rendering a nonsense fraction.
+  var span = (start && due > start) ? due - start : 7 * 86400000;
+  var frac = Math.max(0, Math.min(1, (span - left) / span));
+  var cls = (status === 5) ? "idle"
+          : left < 0 ? "over" : (status === 2 || left < span * 0.25) ? "warn" : "ok";
+  var glyph = cls === "over" ? "!" : (status === 5 ? "\u23F8" : "");
+  return '<div class="kpi ' + cls + '" data-due="' + due + '" data-span="' + span + '">'
+    + dial(frac, cls, glyph)
+    + '<div class="txt"><div class="lab">' + esc(label) + '</div>'
+    + '<div class="val">' + esc(status === 5 ? "Paused" : fmtLeft(left)) + "</div>"
+    + '<div class="due">' + esc(fmtDue(dueIso)) + "</div></div></div>";
+}
+
+function clockHtml(c){
+  if (!c.qualificationDue && !c.closeDue
+      && c.qualificationStatus !== 3 && c.closeStatus !== 3) return "";
+  return '<div class="clock">'
+    + kpiCard("Qualify by", c.qualificationDue, c.qualificationStatus, c.appliedOn)
+    + kpiCard("Close by", c.closeDue, c.closeStatus, c.appliedOn)
+    + "</div>";
+}
+
+/** Repaint only the countdown text so the dials do not flicker every minute. */
+function startClock(){
+  if (CLOCK_TICK) clearInterval(CLOCK_TICK);
+  CLOCK_TICK = setInterval(function(){
+    var live = root.querySelectorAll(".kpi[data-due]");
+    if (!live.length){ clearInterval(CLOCK_TICK); CLOCK_TICK = null; return; }
+    Array.prototype.forEach.call(live, function(el){
+      var left = Number(el.getAttribute("data-due")) - Date.now();
+      el.querySelector(".val").textContent = fmtLeft(left);
+      if (left < 0 && !el.classList.contains("over")){
+        el.classList.remove("ok", "warn"); el.classList.add("over");
+      }
+    });
+  }, 30000);
+}
+
+function paint(v){
+  var c = v.deal || {};
+  if (!c.templateId){
+    root.innerHTML = '<div class="hd"><h3>Sales process</h3></div>'
+      + '<div class="empty">No sales process has been applied to this deal yet.<br>'
+      + "A process is applied automatically when the deal matches a published blueprint.</div>";
+    return;
+  }
+
+  var open = 0, total = (v.tasks || []).length;
+  (v.tasks || []).forEach(function(t){ if (t.state !== 1) open++; });
+  var pct = total ? Math.round((total - open) / total * 100) : 0;
+
+  // Counted live rather than read from the deal rollups, which settle asynchronously.
+  var need = (v.documents || []).filter(function(d){ return d.mandatory; });
+  var got = need.filter(function(d){ return d.received; }).length;
+
+  var html = '<div class="hd"><h3>' + esc(c.templateName) + "</h3>"
+           + '<span class="pill">' + pct + "% done</span></div>"
+           + '<div class="sub">' + (total - open) + " of " + total + " task"
+           + (total === 1 ? "" : "s") + " complete"
+           + (need.length ? " &middot; " + got + " of " + need.length + " required documents in"
+                          : "") + "</div>";
+
+  html += clockHtml(c);
+  html += stageRail(v.bpf);
+
+  if (!total){
+    html += '<div class="empty">No process tasks have been generated yet.</div>';
+  } else {
+    var items = (v.tasks || []).slice().sort(function(a, b){
+      if ((a.state === 1) !== (b.state === 1)) return a.state === 1 ? -1 : 1;
+      return (a.sequence || 0) - (b.sequence || 0);
+    });
+    html += '<div class="tl">' + items.map(taskItem).join("") + "</div>";
+  }
+
+  root.innerHTML = html;
+  startClock();
+  Array.prototype.forEach.call(root.querySelectorAll("a[data-task]"), function(a){
+    a.onclick = function(e){
+      e.preventDefault();
+      openTask(a.getAttribute("data-task"));
+    };
+  });
+}
+
+function openTask(id){
+  var x = xrm();
+  if (x && x.Navigation && x.Navigation.openForm){
+    x.Navigation.openForm({ entityName: "task", entityId: id });
+    return;
+  }
+  window.open(clientUrl() + "/main.aspx?etn=task&pagetype=entityrecord&id=" + id, "_blank");
+}
+
+function load(){
+  var id = dealId();
+  if (!id){ root.innerHTML = '<div class="empty">Save the deal to see its process.</div>'; return; }
+  fetch(apiRoot() + P + "GetOpportunityView", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      Accept: "application/json", "OData-Version": "4.0", "OData-MaxVersion": "4.0"
+    },
+    body: JSON.stringify({ OpportunityId: id })
+  })
+  .then(function(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+  .then(function(d){ paint(JSON.parse(d.View)); })
+  .catch(function(e){ root.innerHTML = '<div class="err">' + esc(e.message) + "</div>"; });
+}
+
+load();
+window.addEventListener("focus", load);
+</script>
+</body>
+</html>

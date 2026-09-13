@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Task outcome</title>
+<style>
+:root{
+  --ink:#0F1B2D; --muted:#5B6472; --line:#E3E7ED; --bg:#F6F8FB;
+  --brand:#0F6CBD; --red:#F4364C; --green:#107C41; --amber:#C19C00; --grey:#8A8886;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;padding:14px;font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  font-size:13px;color:var(--ink);background:#fff;
+}
+h3{margin:0 0 3px;font-size:13.5px}
+.sub{color:var(--muted);font-size:11.5px;margin-bottom:14px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{
+  display:flex;align-items:flex-start;gap:11px;width:100%;text-align:left;
+  border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:11px 13px;
+  cursor:pointer;transition:.12s;font-family:inherit;font-size:13px;color:var(--ink);
+}
+.opt:hover{border-color:var(--c);background:var(--bg)}
+.opt.sel{border-color:var(--c);background:var(--bg);box-shadow:0 0 0 3px rgba(15,108,189,.10)}
+.opt .dot{width:11px;height:11px;border-radius:50%;background:var(--c);flex:none;margin-top:3px}
+.opt .txt{flex:1}
+.opt .lab{font-weight:600}
+.opt .gd{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+.opt .nx{font-size:11px;color:var(--c);margin-top:5px;font-weight:600}
+.req{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+textarea{
+  width:100%;margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:9px 11px;
+  font-family:inherit;font-size:12.5px;min-height:70px;resize:vertical;
+}
+textarea:focus{outline:none;border-color:var(--brand)}
+.actions{display:flex;gap:8px;margin-top:14px;align-items:center}
+button.go{
+  background:var(--brand);border:none;color:#fff;padding:9px 18px;border-radius:6px;
+  font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;
+}
+button.go:disabled{opacity:.45;cursor:default}
+.note{color:var(--muted);font-size:11.5px;line-height:1.5}
+.done{
+  display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;
+  background:#DFF6E7;color:#0B5C31;font-weight:600;
+}
+.err{background:#FEF3F4;color:#8A1020;padding:11px 13px;border-radius:8px;margin-top:10px;font-size:12.5px}
+.spin{
+  width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--brand);
+  border-radius:50%;animation:sp .7s linear infinite;display:inline-block;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="root"><span class="spin"></span></div>
+
+<script>
+"use strict";
+var P = "spc_";
+var OTHER = "cpc_";
+var SENT = { 1:"#107C41", 2:"#8A8886", 3:"#F4364C", 4:"#605E5C" };
+
+function xrm(){
+  var w = window;
+  for (var i = 0; i < 6 && w; i++){
+    if (w.Xrm && w.Xrm.WebApi) return w.Xrm;
+    if (w === w.parent) break;
+    w = w.parent;
+  }
+  return null;
+}
+function apiRoot(){
+  var x = xrm();
+  if (x && x.Utility && x.Utility.getGlobalContext){
+    try { return x.Utility.getGlobalContext().getClientUrl() + "/api/data/v9.2/"; } catch(e){}
+  }
+  return "/api/data/v9.2/";
+}
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+  });
+}
+function taskId(){
+  var x = xrm();
+  try {
+    if (x && x.Page && x.Page.data && x.Page.data.entity){
+      var id = x.Page.data.entity.getId();
+      if (id) return id.replace(/[{}]/g, "");
+    }
+  } catch(e){}
+  var sp = new URLSearchParams(location.search);
+  var d = sp.get("id") || sp.get("recordId");
+  if (!d && sp.get("data")){
+    try { d = new URLSearchParams(decodeURIComponent(sp.get("data"))).get("id"); } catch(e){}
+  }
+  return d ? d.replace(/[{}]/g, "") : null;
+}
+
+var root = document.getElementById("root");
+var state = { id: null, outcomes: [], picked: null, statecode: 0 };
+
+function load(){
+  var id = taskId();
+  if (!id){ root.innerHTML = '<div class="note">Save the task first to record an outcome.</div>'; return; }
+  state.id = id;
+  var sel = "$select=subject,statecode," + P + "availableoutcomes,"
+          + P + "outcomelabel," + P + "outcomecomment," + P + "branchpath";
+  var opts = { credentials: "same-origin",
+    headers: { Accept: "application/json", "OData-Version": "4.0", "OData-MaxVersion": "4.0" } };
+
+  function api(u){
+    return fetch(apiRoot() + u, opts).then(function(r){
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  api("tasks(" + id + ")?" + sel).then(function(t){
+    var mine = [];
+    try { mine = t[P + "availableoutcomes"] ? JSON.parse(t[P + "availableoutcomes"]) : []; } catch(e){}
+    if (t.statecode !== 0 || mine.length) return t;
+    /* Only now ask whether the task belongs to the case configurator. That column exists
+       solely when the other solution is also installed, so probing it up front would 400
+       the whole request on a standalone install. */
+    return api("tasks(" + id + ")?$select=" + OTHER + "availableoutcomes")
+      .then(function(o){ t[OTHER + "availableoutcomes"] = o[OTHER + "availableoutcomes"]; return t; },
+            function(){ return t; });
+  })
+  .then(function(t){ paint(t); })
+  .catch(function(e){ root.innerHTML = '<div class="err">' + esc(e.message) + "</div>"; });
+}
+
+function paint(t){
+  var raw = t[P + "availableoutcomes"];
+  state.statecode = t.statecode;
+
+  if (t.statecode !== 0){
+    root.innerHTML = '<div class="done">\u2713 Recorded: '
+      + esc(t[P + "outcomelabel"] || "Completed") + "</div>"
+      + (t[P + "outcomecomment"] ? '<div class="note" style="margin-top:10px">'
+          + esc(t[P + "outcomecomment"]) + "</div>" : "")
+      + (t[P + "branchpath"] ? '<div class="note" style="margin-top:10px"><b>Path:</b> '
+          + esc(t[P + "branchpath"]) + "</div>" : "");
+    return;
+  }
+
+  var list = [];
+  try { list = raw ? JSON.parse(raw) : []; } catch(e){}
+  if (!list.length){
+    /* The task form is shared with the other configurator. If the task plainly belongs to it,
+       say nothing at all rather than stack two contradictory notices on one form. */
+    var foreign = false;
+    try { foreign = JSON.parse(t[OTHER + "availableoutcomes"] || "[]").length > 0; } catch(e){}
+    root.innerHTML = foreign ? "" :
+      '<div class="note">This task is not part of a configured sales process, so there '
+      + "are no outcomes to pick. Close it the normal way.</div>";
+    if (foreign) document.body.style.display = "none";
+    return;
+  }
+  state.outcomes = list;
+  state.picked = null;
+  list.forEach(function(o){ if (o.isDefault && !state.picked) state.picked = o.id; });
+
+  root.innerHTML = "<h3>How did this task turn out?</h3>"
+    + '<div class="sub">The next task is created automatically based on what you pick.</div>'
+    + '<div class="opts">' + list.map(function(o){
+        var c = SENT[o.sentiment] || SENT[2];
+        return '<button class="opt' + (o.id === state.picked ? " sel" : "") + '" data-id="'
+          + esc(o.id) + '" style="--c:' + c + '">'
+          + '<span class="dot"></span><span class="txt">'
+          + '<span class="lab">' + esc(o.label) + "</span>"
+          + (o.requireComment ? ' <span class="req">comment required</span>' : "")
+          + (o.guidance ? '<div class="gd">' + esc(o.guidance) + "</div>" : "")
+          + (o.nextTask ? '<div class="nx">\u2192 ' + esc(o.nextTask) + "</div>"
+                        : '<div class="nx">\u25A0 ends this branch</div>')
+          + "</span></button>";
+      }).join("") + "</div>"
+    + '<textarea id="cmt" placeholder="Add a note for the sales journal\u2026"></textarea>'
+    + '<div class="actions"><button class="go" id="go">Record outcome</button>'
+    + '<span class="note" id="msg"></span></div>';
+
+  Array.prototype.forEach.call(root.querySelectorAll(".opt"), function(b){
+    b.onclick = function(){
+      state.picked = b.getAttribute("data-id");
+      Array.prototype.forEach.call(root.querySelectorAll(".opt"), function(x){
+        x.classList.toggle("sel", x === b);
+      });
+    };
+  });
+  document.getElementById("go").onclick = submit;
+}
+
+/* The lookup's navigation property is not the same as the attribute logical name, so it is
+   discovered once from metadata rather than hard coded. */
+var NAV = null;
+function outcomeNav(){
+  if (NAV) return Promise.resolve(NAV);
+  var url = apiRoot() + "RelationshipDefinitions/Microsoft.Dynamics.CRM.OneToManyRelationshipMetadata"
+    + "?$select=ReferencingEntityNavigationPropertyName&$filter=ReferencingEntity eq 'task'"
+    + " and ReferencingAttribute eq '" + P + "selectedoutcome'";
+  return fetch(url, { credentials: "same-origin",
+      headers: { Accept: "application/json", "OData-Version": "4.0", "OData-MaxVersion": "4.0" } })
+    .then(function(r){ return r.ok ? r.json() : { value: [] }; })
+    .then(function(j){
+      NAV = (j.value && j.value.length)
+        ? j.value[0].ReferencingEntityNavigationPropertyName
+        : P + "selectedoutcome_Task";
+      return NAV;
+    })
+    .catch(function(){ NAV = P + "selectedoutcome_Task"; return NAV; });
+}
+
+function submit(){
+  var msg = document.getElementById("msg");
+  var go = document.getElementById("go");
+  var comment = document.getElementById("cmt").value.trim();
+  if (!state.picked){ msg.textContent = "Pick an outcome first."; return; }
+
+  var o = null;
+  state.outcomes.forEach(function(x){ if (x.id === state.picked) o = x; });
+  if (o.requireComment && !comment){
+    msg.textContent = "This outcome needs a comment.";
+    document.getElementById("cmt").focus();
+    return;
+  }
+
+  go.disabled = true;
+  msg.innerHTML = '<span class="spin"></span>';
+
+  outcomeNav().then(function(nav){
+    var body = {};
+    body[P + "outcomelabel"] = o.label;
+    body[P + "outcomecomment"] = comment;
+    body[nav + "@odata.bind"] = "/" + P + "taskoutcomes(" + o.id + ")";
+    body.statecode = 1;
+    body.statuscode = 5;
+
+    return fetch(apiRoot() + "tasks(" + state.id + ")", {
+      method: "PATCH", credentials: "same-origin",
+      headers: { "Content-Type": "application/json", "OData-Version": "4.0",
+                 "OData-MaxVersion": "4.0", "If-Match": "*" },
+      body: JSON.stringify(body)
+    });
+  })
+  .then(function(r){
+    if (!r.ok) return r.text().then(function(t){ throw new Error(t.slice(0, 400)); });
+    root.innerHTML = '<div class="done">\u2713 Recorded: ' + esc(o.label) + "</div>"
+      + '<div class="note" style="margin-top:10px">'
+      + (o.nextTask ? "Creating <b>" + esc(o.nextTask) + "</b>\u2026" : "This branch is complete.")
+      + "</div>";
+    var x = xrm();
+    setTimeout(function(){
+      try {
+        if (x && x.Page && x.Page.data) x.Page.data.refresh(false);
+        else location.reload();
+      } catch(e){}
+    }, 1200);
+  })
+  .catch(function(e){
+    go.disabled = false;
+    msg.innerHTML = "";
+    var d = document.createElement("div");
+    d.className = "err";
+    d.textContent = e.message;
+    root.appendChild(d);
+  });
+}
+
+load();
+</script>
+</body>
+</html>

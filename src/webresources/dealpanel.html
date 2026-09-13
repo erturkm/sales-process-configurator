@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sales process and documents</title>
+<style>
+:root{
+  --ink:#0F1B2D; --muted:#5B6472; --line:#E3E7ED; --bg:#F6F8FB;
+  --brand:#0F6CBD; --red:#F4364C; --green:#107C41; --amber:#C19C00;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  font-size:12.5px;color:var(--ink);background:#fff;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+
+/* ---------- tab strip ---------- */
+.tabs{
+  flex:none;display:flex;align-items:stretch;gap:2px;
+  border-bottom:1px solid var(--line);padding:0 10px;background:#fff;
+}
+.tabs button{
+  position:relative;font-family:inherit;font-size:12.5px;font-weight:600;
+  color:var(--muted);background:transparent;border:0;padding:10px 13px 9px;
+  cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
+}
+.tabs button:hover{color:var(--ink)}
+.tabs button.on{color:var(--brand)}
+.tabs button.on:after{
+  content:"";position:absolute;left:9px;right:9px;bottom:-1px;height:2.5px;
+  background:var(--brand);border-radius:2px 2px 0 0;
+}
+.tabs button:focus-visible{outline:2px solid rgba(15,108,189,.4);outline-offset:-3px;border-radius:5px}
+.cnt{
+  font-size:10px;font-weight:700;letter-spacing:.2px;border-radius:9px;padding:1px 6px;
+  background:var(--bg);color:var(--muted);min-width:18px;text-align:center;
+}
+button.on .cnt{background:#EAF2FB;color:var(--brand)}
+.cnt.red{background:#FDECEE;color:var(--red)}
+.cnt.green{background:#E9F5EE;color:var(--green)}
+
+/* ---------- panes ---------- */
+.panes{flex:1;position:relative;min-height:0}
+.pane{
+  position:absolute;inset:0;border:0;width:100%;height:100%;
+  opacity:0;pointer-events:none;transition:opacity .12s ease;
+}
+.pane.on{opacity:1;pointer-events:auto}
+</style>
+</head>
+<body>
+
+<div class="tabs" role="tablist">
+  <button type="button" role="tab" data-p="process" class="on" aria-selected="true">
+    Sales process<span class="cnt" id="c-process">–</span>
+  </button>
+  <button type="button" role="tab" data-p="docs" aria-selected="false">
+    Documents<span class="cnt" id="c-docs">–</span>
+  </button>
+</div>
+
+<div class="panes">
+  <iframe class="pane on" id="p-process" title="Sales process"></iframe>
+  <iframe class="pane"    id="p-docs"    title="Required documents"></iframe>
+</div>
+
+<script>
+"use strict";
+var P = "spc_";
+
+function xrm(){
+  var w = window;
+  for (var i = 0; i < 6 && w; i++){
+    if (w.Xrm && w.Xrm.WebApi) return w.Xrm;
+    if (w === w.parent) break;
+    w = w.parent;
+  }
+  return null;
+}
+function clientUrl(){
+  var x = xrm();
+  if (x && x.Utility && x.Utility.getGlobalContext){
+    try { return x.Utility.getGlobalContext().getClientUrl(); } catch(e){}
+  }
+  return "";
+}
+function dealId(){
+  var x = xrm();
+  try {
+    if (x && x.Page && x.Page.data && x.Page.data.entity){
+      var id = x.Page.data.entity.getId();
+      if (id) return id.replace(/[{}]/g, "");
+    }
+  } catch(e){}
+  var sp = new URLSearchParams(location.search);
+  var d = sp.get("id") || sp.get("recordId");
+  if (!d && sp.get("data")){
+    try { d = new URLSearchParams(decodeURIComponent(sp.get("data"))).get("id"); } catch(e){}
+  }
+  return d ? d.replace(/[{}]/g, "") : null;
+}
+
+/* The child widgets resolve the record the same way this shell does, but they sit in their own
+   iframes and cannot walk up to Xrm.Page reliably, so the id is passed explicitly. */
+var ID = dealId();
+function src(name){
+  return clientUrl() + "/WebResources/" + name + (ID ? "?id=" + ID : "");
+}
+document.getElementById("p-process").src = src(P + "dealprocess.html");
+document.getElementById("p-docs").src    = src(P + "dealdocs.html");
+
+/* ---------------------------------------------------------------- tabs */
+
+var current = "process";
+
+function select(name){
+  if (name === current) return;
+  current = name;
+  var btns = document.querySelectorAll(".tabs button");
+  for (var i = 0; i < btns.length; i++){
+    var on = btns[i].getAttribute("data-p") === name;
+    btns[i].classList.toggle("on", on);
+    btns[i].setAttribute("aria-selected", on ? "true" : "false");
+  }
+  document.getElementById("p-process").classList.toggle("on", name === "process");
+  document.getElementById("p-docs").classList.toggle("on", name === "docs");
+  try { sessionStorage.setItem("spcTab", name); } catch(e){}
+}
+
+document.querySelector(".tabs").addEventListener("click", function(e){
+  var b = e.target.closest("button[data-p]");
+  if (b) select(b.getAttribute("data-p"));
+});
+
+/* Remember the tab across form reloads within the session. */
+try {
+  var saved = sessionStorage.getItem("spcTab");
+  if (saved === "docs") select("docs");
+} catch(e){}
+
+/* ---------------------------------------------------------------- counts */
+
+/**
+ * Badges come from the same GetOpportunityView the widgets use, so the numbers on the tabs always
+ * agree with what the panes show. Failing quietly is fine: the panes render regardless.
+ */
+function loadCounts(){
+  if (!ID) return;
+  fetch(clientUrl() + "/api/data/v9.2/" + P + "GetOpportunityView", {
+    method: "POST",
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json; charset=utf-8",
+      "OData-MaxVersion": "4.0",
+      "OData-Version": "4.0"
+    },
+    credentials: "same-origin",
+    body: JSON.stringify({ OpportunityId: ID })
+  })
+  .then(function(r){ return r.ok ? r.json() : null; })
+  .then(function(d){
+    if (!d) return;
+    var v = JSON.parse(d.View || "{}");
+    var tasks = v.tasks || [];
+    var docs = v.documents || [];
+
+    // GetOpportunityView reports task.state, where 0 is open and anything else is closed.
+    var isOpen = function(t){ return t.state === 0; };
+    var open = tasks.filter(isOpen).length;
+    var late = tasks.filter(function(t){
+      return isOpen(t) && t.due && new Date(t.due) < new Date();
+    }).length;
+    var et = document.getElementById("c-process");
+    et.textContent = open || tasks.length;
+    et.className = "cnt" + (late ? " red" : "");
+
+    var need = docs.filter(function(x){ return x.mandatory; });
+    var got = need.filter(function(x){ return x.received; }).length;
+    var ed = document.getElementById("c-docs");
+    ed.textContent = need.length ? got + "/" + need.length : docs.length;
+    ed.className = "cnt" + (need.length && got === need.length ? " green"
+                            : (need.length ? " red" : ""));
+  })
+  .catch(function(){});
+}
+
+loadCounts();
+window.addEventListener("focus", loadCounts);
+</script>
+</body>
+</html>
