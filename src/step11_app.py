@@ -6,31 +6,39 @@ P = dv.PREFIX
 APP_UNIQUE = f"{P}_SalesProcessConfiguratorApp"
 APP_NAME = "Sales Process Configurator"
 
+# The sitemap is rewritten wholesale on every run, so the web resource subareas that the
+# designer and dashboard steps add have to be declared here too. Otherwise re-running this
+# step silently drops them and the designer disappears from the nav.
+ENTITY = "entity"
+WEBRESOURCE = "webresource"
+
 AREAS = [
     ("Configuration", "Configuration", [
-        ("Process Templates", f"{P}_salesprocesstemplate"),
-        ("Match Rules", f"{P}_matchrule"),
-        ("Task Templates", f"{P}_processtask"),
-        ("Document Packages", f"{P}_documentpackage"),
-        ("Document Items", f"{P}_documentitem"),
+        ("Process Designer", WEBRESOURCE, f"{P}_designer.html", f"{P}_sub_designer"),
+        ("Process Templates", ENTITY, f"{P}_salesprocesstemplate", None),
+        ("Match Rules", ENTITY, f"{P}_matchrule", None),
+        ("Task Templates", ENTITY, f"{P}_processtask", None),
+        ("Document Packages", ENTITY, f"{P}_documentpackage", None),
+        ("Document Items", ENTITY, f"{P}_documentitem", None),
     ]),
     ("Runtime", "Runtime", [
-        ("Opportunities", "opportunity"),
-        ("Applied Processes", f"{P}_appliedprocess"),
-        ("Required Documents", f"{P}_opportunityrequireddocument"),
-        ("Tasks", "task"),
-        ("Agent Runs", f"{P}_agentrun"),
+        ("My work", WEBRESOURCE, f"{P}_workload.html", f"{P}_sub_workload"),
+        ("Opportunities", ENTITY, "opportunity", None),
+        ("Applied Processes", ENTITY, f"{P}_appliedprocess", None),
+        ("Required Documents", ENTITY, f"{P}_opportunityrequireddocument", None),
+        ("Tasks", ENTITY, "task", None),
+        ("Agent Runs", ENTITY, f"{P}_agentrun", None),
     ]),
     ("Sales Setup", "Setup", [
-        ("Products", "product"),
-        ("Accounts", "account"),
-        ("SLAs", "sla"),
-        ("Queues", "queue"),
-        ("Teams", "team"),
+        ("Products", ENTITY, "product", None),
+        ("Accounts", ENTITY, "account", None),
+        ("SLAs", ENTITY, "sla", None),
+        ("Queues", ENTITY, "queue", None),
+        ("Teams", ENTITY, "team", None),
     ]),
 ]
 
-ENTITIES = sorted({e for _, _, subs in AREAS for _, e in subs})
+ENTITIES = sorted({tgt for _, _, subs in AREAS for _, kind, tgt, _ in subs if kind == ENTITY})
 
 
 def sitemap_xml():
@@ -38,10 +46,15 @@ def sitemap_xml():
     for title, key, subs in AREAS:
         groups = ""
         subxml = ""
-        for stitle, ent in subs:
-            subxml += (f'<SubArea Id="sub_{uuid.uuid4().hex[:8]}" Entity="{ent}" Client="All,Outlook,OutlookLaptopClient,'
-                       f'OutlookWorkstationClient,Web" AvailableOffline="true" PassParams="false">'
-                       f'<Titles><Title LCID="1033" Title="{stitle}" /></Titles></SubArea>')
+        for stitle, kind, target, sid in subs:
+            if kind == WEBRESOURCE:
+                subxml += (f'<SubArea Id="{sid}" Url="$webresource:{target}" '
+                           f'Client="All,Web" AvailableOffline="false" PassParams="false">'
+                           f'<Titles><Title LCID="1033" Title="{stitle}" /></Titles></SubArea>')
+            else:
+                subxml += (f'<SubArea Id="sub_{uuid.uuid4().hex[:8]}" Entity="{target}" Client="All,Outlook,OutlookLaptopClient,'
+                           f'OutlookWorkstationClient,Web" AvailableOffline="true" PassParams="false">'
+                           f'<Titles><Title LCID="1033" Title="{stitle}" /></Titles></SubArea>')
         groups += (f'<Group Id="grp_{uuid.uuid4().hex[:8]}" IsProfile="false">'
                    f'<Titles><Title LCID="1033" Title="{title}" /></Titles>'
                    f'{subxml}</Group>')
@@ -101,7 +114,8 @@ def main():
     body = {
         "name": APP_NAME,
         "uniquename": APP_UNIQUE,
-        "description": "Configure case process blueprints: targeting rules, SLAs, BPF stages, task plans and document packages.",
+        "description": "Configure sales process blueprints: product targeting rules, deal clocks, "
+                       "BPF stages, task plans and document packages.",
         "clienttype": 4,
         "webresourceid": ensure_icon(),
         # 0 = classic single-session shell. 1 is the multi-session (Customer
@@ -114,6 +128,9 @@ def main():
         dv.patch(f"appmodules({app_id})", {
             "name": APP_NAME,
             "description": body["description"],
+            # Re-point the icon on every run. An app created before this fork was renamed
+            # still references the case solution's icon web resource.
+            "webresourceid": body["webresourceid"],
             "navigationtype": 0,
         }, solution=True)
         print("  ~ app", app_id)
@@ -125,6 +142,9 @@ def main():
     for e in ENTITIES:
         md = dv.get(f"EntityDefinitions(LogicalName='{e}')?$select=MetadataId")
         comps.append({"@odata.type": "Microsoft.Dynamics.CRM.entity", "entityid": md["MetadataId"]})
+    # Web resources are deliberately not added here: the platform rejects them as app
+    # components ("An app can't reference the component type webresource"). A sitemap
+    # subarea with Url="$webresource:..." resolves without one.
     dv.post("AddAppComponents", {"AppId": app_id, "Components": comps})
     print("  + app components:", len(comps))
 

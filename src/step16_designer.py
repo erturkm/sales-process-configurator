@@ -14,6 +14,7 @@ import dv
 P = dv.PREFIX
 WR_NAME = f"{P}_designer.html"
 WR_DISPLAY = "Sales Process Visual Designer"
+WR_DESCRIPTION = "Drag and drop designer for outcome driven sales process graphs."
 HERE = os.path.dirname(os.path.abspath(__file__))
 HTML_PATH = os.path.join(HERE, "webresources", "designer.html")
 
@@ -26,13 +27,15 @@ def upload():
     content = base64.b64encode(open(HTML_PATH, "rb").read()).decode()
     wr = dv.find_one("webresourceset", f"name eq '{WR_NAME}'", "webresourceid,name")
     if wr:
-        dv.patch(f"webresourceset({wr['webresourceid']})", {"content": content}, solution=True)
+        dv.patch(f"webresourceset({wr['webresourceid']})",
+                 {"content": content, "displayname": WR_DISPLAY, "description": WR_DESCRIPTION},
+                 solution=True)
         print("  ~ web resource", wr["webresourceid"])
         return wr["webresourceid"]
     wid = dv.new_id(dv.post("webresourceset", {
         "name": WR_NAME,
         "displayname": WR_DISPLAY,
-        "description": "Drag and drop designer for outcome driven case process graphs.",
+        "description": WR_DESCRIPTION,
         "webresourcetype": 1,
         "content": content,
     }, solution=True))

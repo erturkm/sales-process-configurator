@@ -67,6 +67,8 @@ The meaningful difference is what drives targeting:
 
 ### Configuration — owned by the business
 
+![Visual process designer showing the Corporate Credit Facility lifecycle as an outcome-driven task graph, with swimlanes per business process flow stage and labelled outcome connectors](docs/images/designer.png)
+
 | Capability | What it gives you |
 |---|---|
 | **Sales process templates** | A single record defining targeting plus everything applied at runtime. Versioned, activatable, and orderable by priority when several could match. |
@@ -82,6 +84,8 @@ The meaningful difference is what drives targeting:
 
 ### Runtime — automatic on opportunity creation
 
+![Sales process templates list showing six active templates, each with its product-line targeting, evaluation rank and bound business process flow](docs/images/app-home.png)
+
 | Capability | What it gives you |
 |---|---|
 | **Automatic template matching** | On create, the engine evaluates active templates in priority order and applies the first match. No manual selection. |
@@ -93,6 +97,8 @@ The meaningful difference is what drives targeting:
 
 ### Seller experience
 
+![Opportunity form with the sales process panel open, showing the deal clock dials for qualification and close alongside the outcome-driven task list](docs/images/deal-panel.png)
+
 | Capability | What it gives you |
 |---|---|
 | **Tabbed deal panel** | One space-efficient panel on the opportunity form with tabs for the sales process and required documents, each showing a live count badge that turns red on overdue or outstanding mandatory items. |
@@ -101,7 +107,11 @@ The meaningful difference is what drives targeting:
 | **My work dashboard** | Personal and team pipeline workload in one view, with a team picker and a mine/team/everything scope switch. |
 | **Interactive charts** | Task urgency, workload by owner and deals by product line — all clickable and cross-filtering, with removable filter chips. |
 
+![My work dashboard with task urgency, workload by owner and deals by process charts above the task and deal lists, scoped by team](docs/images/dashboard.png)
+
 ### AI agents as process participants
+
+![Required documents tab on the deal, listing the twelve documents the credit process expects with owner team, due date and received status](docs/images/deal-documents.png)
 
 A task in the graph can be owned by an **AI agent** instead of a person or a team. The agent is a
 first-class participant in the same outcome-driven process — it receives the same context, records
@@ -116,6 +126,8 @@ one of the same published outcomes, and advances the same graph.
 | **Human authority preserved** | Credit decisions, pricing approvals, security waivers and anything customer-facing stay human by design. The agent prepares; a person decides. |
 
 ### Process authoring from a written procedure
+
+![Process Copilot panel with a natural language description of a trade finance facility ready to generate a process](docs/images/copilot-authoring.png)
 
 | Capability | What it gives you |
 |---|---|

@@ -10,7 +10,9 @@ Credit lifecycle deals have their information pack and financials staged before 
 reaches the analytical tasks, otherwise the agent correctly refuses and the pipeline fills
 up with parked tasks instead of progress.
 
-Re-runnable: every SPCPIPE deal is deleted and recreated.
+Re-runnable: every deal on the demo price list is deleted and recreated. The price list is the
+cleanup handle rather than a name prefix, so the deals can carry names that look real in a demo
+without the seeder losing track of what it owns.
 """
 import sys
 import time
@@ -18,7 +20,7 @@ import time
 import dv
 
 P = dv.PREFIX
-TAG = "SPCPIPE"
+PRICE_LIST = "SPC Demo Price List"
 
 AGENT_STATE = {1: "Queued", 2: "Running", 3: "Succeeded",
                4: "Awaiting review", 5: "Failed", 6: "Skipped"}
@@ -79,9 +81,20 @@ CREDIT_PRODUCTS = {"Corporate Term Loan", "Commercial Mortgage", "Working Capita
 
 
 def clean():
+    """Delete the deals this seeder owns.
+
+    Ownership is claimed by the demo price list, which nothing else in the solution uses.
+    Matching on that rather than a name prefix keeps the deals presentable while still making
+    the seeder safely re-runnable. If the price list does not exist yet there is nothing to
+    clean, and we must not fall back to a broader filter that could hit real deals.
+    """
+    pl = dv.find_one("pricelevels", f"name eq '{PRICE_LIST}'", "pricelevelid")
+    if not pl:
+        print("  no demo price list yet; nothing to clean")
+        return
     n = 0
     for o in dv.get(f"opportunities?$select=opportunityid,name"
-                    f"&$filter=startswith(name,'{TAG}')")["value"]:
+                    f"&$filter=_pricelevelid_value eq {pl['pricelevelid']}")["value"]:
         for t in dv.get(f"tasks?$select=activityid&$filter=_regardingobjectid_value eq "
                         f"{o['opportunityid']}")["value"]:
             dv.call("DELETE", f"tasks({t['activityid']})")
@@ -91,11 +104,11 @@ def clean():
 
 
 def price_list():
-    ex = dv.find_one("pricelevels", "name eq 'SPC Demo Price List'", "pricelevelid")
+    ex = dv.find_one("pricelevels", f"name eq '{PRICE_LIST}'", "pricelevelid")
     if ex:
         return ex["pricelevelid"]
     return dv.new_id(dv.post("pricelevels",
-                             {"name": "SPC Demo Price List", "begindate": "2026-01-01"}))
+                             {"name": PRICE_LIST, "begindate": "2026-01-01"}))
 
 
 def stage_credit_file(oid, value, blurb):
@@ -196,7 +209,7 @@ def main():
             print(f"  !! skipped {acct_name} / {prod_name} - not found")
             continue
 
-        name = f"{TAG} - {acct_name.split()[0]} {blurb}"
+        name = f"{acct_name.split()[0]} {blurb}"
         oid = dv.new_id(dv.post("opportunities", {
             "name": name[:300],
             "customerid_account@odata.bind": f"/accounts({acct['accountid']})",
