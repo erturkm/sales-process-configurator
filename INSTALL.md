@@ -52,7 +52,7 @@ Optional, and only if you want the Copilot authoring features:
 
 ## Option A — import the packaged solution (recommended)
 
-1. Download `SalesProcessConfigurator_1_1_0_0_managed.zip` from the
+1. Download `SalesProcessConfigurator_1_1_1_0_managed.zip` from the
    [latest release](https://github.com/erturkm/sales-process-configurator/releases/latest).
 
 2. **Import the [Modern SLA Timer PCF](https://github.com/moliveirapinto/modern-sla-timer-pcf)
@@ -82,11 +82,17 @@ cd sales-process-configurator/src
 az login
 export DATAVERSE_URL="https://yourorg.crm.dynamics.com"
 
-python3 step4c_team_roles.py        # teams and security roles
 python3 step24_sales_foundation.py  # product lines, document packages, sample accounts
+python3 step4c_team_roles.py        # security role for the teams step24 just created
 python3 step25_sales_processes.py   # demo sales processes
 python3 step55_sales_pipeline.py    # a sample pipeline of deals
 ```
+
+> [!IMPORTANT]
+> `step4c_team_roles.py` must run **after** `step24_sales_foundation.py`, because it grants the
+> role to the teams that step creates. Run it too early and it has nothing to grant, and the
+> failure is silent and confusing: deals match their process and list their documents, but no
+> task is ever created. See [Troubleshooting](#no-tasks-are-created).
 
 To enable Copilot authoring, also configure the Foundry connection:
 
@@ -128,7 +134,6 @@ Run the steps in order:
 python3 step1_solution.py            # solution and publisher
 python3 step2_tables.py              # custom tables
 python3 step3_relationships.py       # relationships
-python3 step4c_team_roles.py         # teams and security roles
 python3 step5_runtime_columns.py     # runtime columns on opportunity and task
 
 # Engine
@@ -153,6 +158,7 @@ python3 step53_wire_sales_agents.py
 
 # Demo content
 python3 step24_sales_foundation.py   # product lines, document packages, accounts
+python3 step4c_team_roles.py         # security role for the teams step24 just created
 python3 step25_sales_processes.py    # demo sales processes
 python3 step55_sales_pipeline.py     # sample pipeline
 ```
@@ -221,10 +227,40 @@ SLAs *are* platform SLAs, because the `task` table is SLA-enabled.
 |---|---|
 | Import fails on the plug-in assembly | The environment must allow sandboxed plug-in registration. Use a developer or sandbox environment. |
 | No process applies to a new deal | The template must be **active**, and its match rules must resolve against the product lines actually on the deal. Use **Test rules** in the designer. |
+| **A process applies but no tasks are created** | The owning team has no security role. See [below](#no-tasks-are-created). |
 | Deal clock shows nothing | The deal has no applied process. Confirm a template matched, and that the plug-in step on Opportunity create is registered and enabled. |
 | Copilot authoring returns an error | The Foundry environment variable **values** are blank or wrong. Re-run `step46_foundry_config.py` with the environment variables set. |
 | `DATAVERSE_URL is not set` | Export it in the same shell before running any step. |
 | Publish lock / `0x80071151` | Another solution operation is running in the environment. The scripts retry automatically; if it persists, wait and re-run. |
+
+### No tasks are created
+
+The deal matches its process, the summary and the required documents appear, but the sales process
+tab stays empty. This is almost always a team that holds no security role.
+
+A team created through the Web API gets no roles at all. The moment such a team is made the owner
+of a task, the platform refuses the assignment, because it checks that the incoming owner can read
+the entity — and a task is an activity, so that check runs across every activity type in the org:
+
+```
+Read Privilege Check For Owner failed ... Principal team (Id=..., privilegeCount=0),
+is missing prvReadActivity privilege ... for entity 'quoteclose'
+```
+
+The task creation is what fails, so nothing appears, and because the step runs asynchronously
+there is no error on screen. Turn on plug-in tracing (**Settings → Administration → System
+Settings → Customization → Enable logging to plug-in trace log: All**) and the exception above
+will be in the trace log.
+
+The fix is to run the role step, and to run it **after** the teams exist:
+
+```bash
+python3 step24_sales_foundation.py   # creates the teams
+python3 step4c_team_roles.py         # grants them the role
+```
+
+`step4c_team_roles.py` only touches the nine teams this accelerator creates. If you assign process
+tasks to teams of your own, grant those teams a role that can read and write activities.
 
 ---
 

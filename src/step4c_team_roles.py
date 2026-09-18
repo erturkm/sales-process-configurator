@@ -1,11 +1,34 @@
-"""Step 4c: give the demo teams a security role so they can own cases, tasks and activities.
+"""Step 4c: give the demo teams a security role so they can own tasks and activities.
 
-Teams created through the Web API get no roles at all (privilegeCount=0), which makes the case
-form fail with "Team Roles Error ... is missing prvReadActivity" the moment a team owns anything.
-System Administrator is granted here deliberately: this is a demo org and these teams need to
-read and write every activity type the case timeline touches.
+Teams created through the Web API get no roles at all (privilegeCount=0). The moment such a team
+is made the owner of a task the platform rejects the assignment, because it validates that the new
+owner can read the entity, and a task is an activity so the check runs across every activity type:
+
+    Read Privilege Check For Owner failed ... Principal team (Id=..., privilegeCount=0),
+    is missing prvReadActivity privilege ... for entity 'quoteclose'
+
+That surfaces as a process that applies its template but silently generates no tasks.
+
+Only the teams this accelerator creates are touched. An earlier version granted the role to every
+non-default owner team it could find, which in a real environment means the owner teams that belong
+to first-party solutions, application users and flows -- handing System Administrator to two dozen
+service principals. Scope is now an explicit list, and anything unrecognised is left alone.
 """
 import dv
+
+# The teams step24 seeds. Kept in step with that list deliberately: a team not created here has
+# not been reasoned about, and must not be granted anything.
+SPC_TEAMS = [
+    "Corporate Coverage",
+    "SME Sales",
+    "Credit Risk",
+    "Credit Administration",
+    "Trade Operations",
+    "Treasury Sales",
+    "Legal and Documentation",
+    "Compliance and Financial Crime",
+    "Deal Desk",
+]
 
 BU = dv.get("businessunits?$select=businessunitid"
             "&$filter=parentbusinessunitid eq null")["value"][0]["businessunitid"]
@@ -13,14 +36,16 @@ BU = dv.get("businessunits?$select=businessunitid"
 ROLE = "System Administrator"
 
 def owner_teams():
-    """Every non-default owner team in the org.
-
-    Discovered rather than listed, so teams added by later seeding steps are
-    picked up automatically instead of silently going role-less.
-    """
+    """The accelerator's own owner teams, and nothing else."""
     rows = dv.get("teams?$select=teamid,name,isdefault,_businessunitid_value"
-                  "&$filter=teamtype eq 0&$top=200")["value"]
-    return [t for t in rows if not t.get("isdefault")]
+                  "&$filter=teamtype eq 0&$top=500")["value"]
+    by_name = {t["name"]: t for t in rows if not t.get("isdefault")}
+    found, missing = [], []
+    for name in SPC_TEAMS:
+        (found if name in by_name else missing).append(by_name.get(name, name))
+    if missing:
+        print("  !! not found (run step24 first):", ", ".join(missing))
+    return found
 
 
 def main():

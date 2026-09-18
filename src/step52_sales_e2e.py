@@ -137,13 +137,25 @@ def main():
         print(f"  {step + 1:2}. {t['subject'][:56]:56} -> {pick[f'{P}_name']}")
         time.sleep(1)
 
-    final = dv.get(f"opportunities({oid})?$select=statecode,statuscode,"
-                   f"{P}_tasksopen,{P}_taskstotal,{P}_processsummary")
+    # The rollups are maintained by an async step, so reading them the instant the last
+    # outcome is saved reports the count from one task ago. Wait for the deal to settle
+    # rather than reporting a failure that is really a race in the test.
+    final = wait_for(lambda: (lambda d: d if d["statecode"] != 0 and
+                              (d.get(f"{P}_tasksopen") or 0) == 0 else None)(
+        dv.get(f"opportunities({oid})?$select=statecode,statuscode,"
+               f"{P}_tasksopen,{P}_taskstotal,{P}_processsummary")),
+        60, "the deal rollups to settle") or dv.get(
+        f"opportunities({oid})?$select=statecode,statuscode,"
+        f"{P}_tasksopen,{P}_taskstotal,{P}_processsummary")
     print("\n  summary     :", (final.get(f"{P}_processsummary") or "")[:300])
     print("  statecode   :", final["statecode"], "(0 open, 1 won, 2 lost)")
     print("  tasks       :", final.get(f"{P}_tasksopen"), "open of", final.get(f"{P}_taskstotal"))
     if final["statecode"] != 1:
         fails.append("deal did not close as won")
+    done = dv.get(f"tasks?$select=activityid,statecode&$filter=_regardingobjectid_value eq {oid}")["value"]
+    print("  actual      :", sum(1 for t in done if t["statecode"] == 0), "open of", len(done))
+    if any(t["statecode"] == 0 for t in done):
+        fails.append("tasks left open after the deal closed")
 
     print("\nRESULT:", "PASS" if not fails else "FAIL -> " + "; ".join(fails))
     return 0 if not fails else 1

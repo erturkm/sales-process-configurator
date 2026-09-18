@@ -181,7 +181,7 @@ Quick summary:
 #   1. Import the Modern SLA Timer PCF:
 #      https://github.com/moliveirapinto/modern-sla-timer-pcf/releases
 #   2. Power Platform admin centre -> Solutions -> Import
-#      -> solution/SalesProcessConfigurator_1_1_0_0_managed.zip
+#      -> solution/SalesProcessConfigurator_1_1_1_0_managed.zip
 #   3. Then run the post-import steps in INSTALL.md.
 
 # Option B — build from source against your own environment

@@ -76,6 +76,21 @@ def ensure_icon():
     import base64
     name = f"{P}_/icons/salesprocessconfigurator.svg"
     content = base64.b64encode(ICON_SVG.encode()).decode()
+
+    # An early cut of this fork created the icon under the case solution's FILE name, still
+    # prefixed spc_. The app has pointed at the sales-named one since, so the old row just sits
+    # in the solution as a case-branded file inside a sales product. Drop it if it is still here.
+    stale = dv.find_one("webresourceset", f"name eq '{P}_/icons/caseprocessconfigurator.svg'",
+                        "webresourceid,name")
+    if stale:
+        app = dv.find_one("appmodules", f"uniquename eq '{P}_SalesProcessConfiguratorApp'",
+                          "appmoduleid,webresourceid")
+        if app and (app.get("webresourceid") or "").lower() == stale["webresourceid"].lower():
+            print("  ! leaving the legacy icon, the app still points at it")
+        else:
+            dv.call("DELETE", f"webresourceset({stale['webresourceid']})")
+            print("  - removed legacy icon", stale["name"])
+
     wr = dv.find_one("webresourceset", f"name eq '{name}'", "webresourceid,name")
     body = {"name": name, "displayname": "Sales Process Configurator Icon",
             "webresourcetype": 11, "content": content}
@@ -95,12 +110,20 @@ def main():
         legacy = dv.find_one("sitemaps", f"sitemapname eq '{P}_cpcsitemap'",
                              "sitemapid,sitemapname")
         if legacy:
+            # Only sitemapname is renamed here. sitemapnameunique is IsValidForUpdate=false, so
+            # the platform silently keeps the original on update and rejects it outright if sent
+            # alone ("The site map is empty"). That unique name is what the solution exports as
+            # SiteMapUniqueName, which is why an export of this solution still carries
+            # spc_cpcsitemap. It is an internal identifier, never shown anywhere in the product,
+            # and the only way to change it is to delete and recreate the sitemap - which
+            # unwires the app for every existing install. Left alone deliberately.
+            #
             # The platform validates the whole record on update, so the xml has to travel
             # with the rename or it answers "The site map is empty".
             dv.patch(f"sitemaps({legacy['sitemapid']})",
-                     {"sitemapname": smname, "sitemapnameunique": smname,
-                      "sitemapxml": sitemap_xml()}, solution=True)
-            print(f"  ~ renamed sitemap {P}_cpcsitemap -> {smname}")
+                     {"sitemapname": smname, "sitemapxml": sitemap_xml()}, solution=True)
+            print(f"  ~ renamed sitemap {P}_cpcsitemap -> {smname} "
+                  f"(unique name stays {P}_cpcsitemap, it cannot be updated)")
             existing_sm = {"sitemapid": legacy["sitemapid"]}
     if existing_sm:
         sm_id = existing_sm["sitemapid"]
