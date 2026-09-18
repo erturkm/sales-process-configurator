@@ -11,10 +11,31 @@
 |---|---|
 | A Dataverse environment | A **disposable** trial, developer or sandbox environment. A Power Platform developer environment is free and ideal. |
 | Dynamics 365 Sales | The Opportunity table, product catalog and sales business process flows must be present. |
+| **Modern SLA Timer PCF** | **Install this first.** The task form binds its deal clock to this control, so the solution import fails without it. See below. |
 | System Administrator role | Required to register a plug-in assembly, create custom APIs and edit the Opportunity form. |
 | Python 3.9+ | Only needed to build from source, or to run the post-import configuration steps. |
 | Azure CLI (`az`) | Used for authentication by the build scripts. Sign in with `az login` first. |
 | .NET SDK 6.0+ | Only needed if you intend to rebuild the plug-in assembly from C# source. |
+
+### Modern SLA Timer PCF
+
+The countdown clock on each process task is not our control. It is the **Modern SLA Timer** PCF by
+Marcelo Oliveira Pinto, used unmodified and under its own licence:
+
+**https://github.com/moliveirapinto/modern-sla-timer-pcf**
+
+It is deliberately *not* bundled into this solution, so that it stays on its own release cadence and
+its licence is never restated by us. Install it first — download the solution zip from that
+repository's [releases](https://github.com/moliveirapinto/modern-sla-timer-pcf/releases) and import
+it before importing this one.
+
+Skipping it produces exactly this import error:
+
+```
+Solution manifest import: FAILURE ... The missing dependencies are:
+  <Required type="66" schemaName="mcsla_ModernSlaTimer.ModernSlaTimerControl" ... />
+  <Dependent type="60" displayName="Task" ... />
+```
 
 Optional, and only if you want the Copilot authoring features:
 
@@ -31,19 +52,23 @@ Optional, and only if you want the Copilot authoring features:
 
 ## Option A — import the packaged solution (recommended)
 
-1. Download `SalesProcessConfigurator_1_0_0_0_managed.zip` from the
+1. Download `SalesProcessConfigurator_1_1_0_0_managed.zip` from the
    [latest release](https://github.com/erturkm/sales-process-configurator/releases/latest).
 
-2. In the **Power Platform admin centre** (or `make.powerapps.com`), select your target
+2. **Import the [Modern SLA Timer PCF](https://github.com/moliveirapinto/modern-sla-timer-pcf)
+   first** if you have not already — see Prerequisites above. The import fails without it.
+
+3. In the **Power Platform admin centre** (or `make.powerapps.com`), select your target
    environment, go to **Solutions → Import solution**, and choose the downloaded file.
 
-3. When prompted for **environment variable values**, you may leave them all blank. They hold the
+4. When prompted for **environment variable values**, you may leave them all blank. They hold the
    Azure AI Foundry connection and are only needed for Copilot authoring. They are intentionally
    shipped **without values** so that no credential can ever travel inside a solution file.
 
-4. Complete the import and wait for publishing to finish.
+5. Complete the import and wait for publishing to finish. A first-time import takes roughly
+   15 minutes.
 
-5. Run the post-import configuration below.
+6. Run the post-import configuration below.
 
 ### Post-import configuration
 

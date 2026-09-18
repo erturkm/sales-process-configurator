@@ -28,8 +28,14 @@ import dv
 P = dv.PREFIX
 PCF = "mcsla_ModernSlaTimer.ModernSlaTimerControl"
 SUBGRID_CLASSID = "{E7A81278-8635-4d9e-8D4D-59480B391C5B}"
-VIEW_NAME = "Task SLA Timer Source"
+VIEW_NAME = "Sales Task SLA Timer Source"
 SECTION = "spc_tasksla_sec"
+# The case configurator puts its own timer on these same shared task forms, under
+# "Task SLA Timer Source" / control id TaskSlaTimerGrid. Both names here must stay
+# distinct from those: this script patches the view into the SPC solution and strips
+# its own section before re-adding it, so a shared name would hijack the case view
+# and a shared control id would delete the case timer's binding.
+GRID_ID = "SpcTaskSlaTimerGrid"
 
 ATTRS = [
     "name", "status", "failuretime", "warningtime", "succeededon",
@@ -61,7 +67,7 @@ def ensure_view():
         print("  ~ view", vid)
     else:
         body |= {"returnedtypecode": "slakpiinstance", "querytype": 0,
-                 "description": "Feeds the Modern SLA Timer PCF on the task form."}
+                 "description": "Feeds the Modern SLA Timer PCF on the sales task form."}
         vid = dv.new_id(dv.post("savedqueries", body, solution=True))
         print("  + view", vid)
     return vid
@@ -87,7 +93,7 @@ def section_xml(view_id, uid):
         '<rows>'
         f'<row><cell id="{{{uuid.uuid4()}}}" showlabel="false" rowspan="5" colspan="1" auto="false">'
         '<labels><label description="SLA" languagecode="1033" /></labels>'
-        f'<control id="TaskSlaTimerGrid" classid="{SUBGRID_CLASSID}" '
+        f'<control id="{GRID_ID}" classid="{SUBGRID_CLASSID}" '
         f'indicationOfSubgrid="true" uniqueid="{uid}">'
         f'<parameters>{grid_params(view_id)}</parameters>'
         '</control></cell></row>'
@@ -122,11 +128,20 @@ def inject(xml, view_id):
     inserting directly before it puts the countdown at the top of the same rail
     the agent uses to close the task, whatever column layout the form happens to
     have.
+
+    These task forms are shared with the case configurator, which layers its own
+    timer on them. Only this script's own section and its own controlDescription
+    are removed, matched by the uniqueid carried inside the section, so a re-run
+    never disturbs the case sections sitting alongside.
     """
-    xml = re.sub(rf'<section name="{SECTION}".*?</section>', "", xml, flags=re.S)
-    xml = re.sub(r'<controlDescription forControl="[^"]*">(?:(?!</controlDescription>).)*'
-                 r'TaskSlaTimerGrid(?:(?!</controlDescription>).)*</controlDescription>',
-                 "", xml, flags=re.S)
+    mine = re.search(rf'<section name="{SECTION}".*?</section>', xml, flags=re.S)
+    if mine:
+        uid = re.search(r'uniqueid="(\{[^"]+\})"', mine.group(0))
+        xml = xml.replace(mine.group(0), "")
+        if uid:
+            xml = re.sub(
+                r'<controlDescription forControl="%s">.*?</controlDescription>'
+                % re.escape(uid.group(1)), "", xml, flags=re.S)
 
     anchor = xml.find('<section name="spc_outcome_sec"')
     if anchor < 0:

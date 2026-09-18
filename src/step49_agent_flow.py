@@ -15,13 +15,44 @@ spc_PrepareAgentTask and spc_CompleteAgentTask where it can be tested. The flow 
 Re-runnable: upserts the connection references and the workflow row by name.
 """
 import json
+import os
 import subprocess
 import urllib.parse
 import urllib.request
 
 import dv
 
-ENV_ID = "ad5dd938-824d-e154-aac2-97f7c4678f5a"
+
+def environment_id():
+    """The Power Platform environment id for whatever DATAVERSE_URL points at.
+
+    This used to be a hard-coded literal, which silently bound every install to the
+    environment it was first authored in: a second org would look up its connections
+    in someone else's environment and either find none or wire the flow to the wrong
+    tenant's connections. The organization row carries the id, so ask the org itself.
+    Override with SPC_ENV_ID if you need to pin it.
+    """
+    pinned = os.environ.get("SPC_ENV_ID")
+    if pinned:
+        return pinned
+    env = None
+    try:
+        env = dv.get("RetrieveCurrentOrganization(AccessType='Default')")
+    except Exception:
+        pass
+    if env:
+        detail = env.get("Detail") or {}
+        for key in ("EnvironmentId", "environmentId"):
+            if detail.get(key):
+                return detail[key]
+    raise SystemExit(
+        "Could not determine the environment id for %s.\n"
+        "  Set it explicitly:  export SPC_ENV_ID=\"<guid>\"\n"
+        "  (Power Platform admin center > your environment > Environment ID)"
+        % (dv.ORG or "the target org"))
+
+
+ENV_ID = environment_id()
 FLOW_NAME = "SPC - Run AI agent task"
 
 DV_API = "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"

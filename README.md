@@ -169,13 +169,20 @@ Two options — import the solution, or build it from source.
 **See [INSTALL.md](INSTALL.md) for full step-by-step instructions**, including prerequisites,
 post-import configuration, sample data, verification and uninstall.
 
+> [!IMPORTANT]
+> **Install the [Modern SLA Timer PCF](https://github.com/moliveirapinto/modern-sla-timer-pcf)
+> first.** The deal clock on each process task is that control, used unmodified and under its own
+> licence. It is deliberately not bundled here, and the solution import fails without it.
+
 Quick summary:
 
 ```bash
 # Option A — import the packaged solution (fastest)
-#   Power Platform admin centre -> Solutions -> Import
-#   -> solution/SalesProcessConfigurator_1_0_0_0_managed.zip
-#   Then run the post-import steps in INSTALL.md.
+#   1. Import the Modern SLA Timer PCF:
+#      https://github.com/moliveirapinto/modern-sla-timer-pcf/releases
+#   2. Power Platform admin centre -> Solutions -> Import
+#      -> solution/SalesProcessConfigurator_1_1_0_0_managed.zip
+#   3. Then run the post-import steps in INSTALL.md.
 
 # Option B — build from source against your own environment
 az login
@@ -201,9 +208,36 @@ src/                      Build scripts, plug-in source and web resources
   plugin/                 C# plug-in and custom API source
   webresources/           Designer, runtime widgets and dashboard
   demo/                   Sample procedure used to exercise the design Copilot
+  step60_package.py       Exports the solution as an installable zip (see below)
 INSTALL.md                Installation, verification and uninstall
 DISCLAIMER.md             Full disclaimer — please read before installing
 LICENSE                   MIT
+```
+
+### A note on packaging
+
+`src/step60_package.py` is the only supported way to cut a release zip. A plain **Export solution**
+produces a zip that cannot be imported anywhere else, and the reason is worth knowing if you fork
+this.
+
+This accelerator and the [Case Process
+Configurator](https://github.com/erturkm/case-process-configurator) were authored in the same
+environment, and both add their own sections to the three shared Task forms. That is correct and
+intended — a task belongs to a case or to a deal, and each panel shows only in its own context.
+
+But a system form is an *atomic* solution component: it exports whole, and there is no way to export
+only your own sections. So a raw export of this solution still carries the case sections, along with
+their columns, relationship and web resource — none of which exist in a clean environment. The
+import then fails with one missing dependency per foreign component, per form.
+
+`step60_package.py` exports, strips the foreign sections and their control bindings from the form
+XML, clears the now-stale entries from the manifest the platform writes into `solution.xml`, and
+refuses to write a zip if anything foreign survives. Genuine prerequisites — the Modern SLA Timer
+PCF — are deliberately left in the manifest so they still fail loudly rather than silently.
+
+```bash
+export DATAVERSE_URL="https://yourorg.crm.dynamics.com"
+python3 src/step60_package.py --version 1.1.0.0
 ```
 
 ---
