@@ -13,3 +13,6 @@ __pycache__/
 .DS_Store
 .vscode/
 .idea/
+
+# Scratch output from the design Copilot
+src/demo/last_design.json

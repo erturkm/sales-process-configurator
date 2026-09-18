@@ -31,6 +31,9 @@ RELS = [
     ("spc_processtask", "task", "sourcetask", "Source Process Task", "None"),
     ("spc_salesprocesstemplate", "task", "sourcetemplate", "Source Sales Process Template", "None"),
     ("spc_salesprocesstemplate", "opportunity", "appliedtemplate", "Applied Sales Process Template", "None"),
+    # headline product on the deal. SPC owns this rather than reusing another publisher's column so
+    # the package never carries a dependency the target org does not have.
+    ("product", "opportunity", "product", "Product", "None"),
 ]
 
 

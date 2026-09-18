@@ -52,7 +52,7 @@ Optional, and only if you want the Copilot authoring features:
 
 ## Option A — import the packaged solution (recommended)
 
-1. Download `SalesProcessConfigurator_1_1_1_0_managed.zip` from the
+1. Download `SalesProcessConfigurator_1_2_0_0_managed.zip` from the
    [latest release](https://github.com/erturkm/sales-process-configurator/releases/latest).
 
 2. **Import the [Modern SLA Timer PCF](https://github.com/moliveirapinto/modern-sla-timer-pcf)
@@ -150,6 +150,12 @@ python3 step18_opportunity_widgets.py# deal panel, process and documents widgets
 python3 step22_workload.py           # my work dashboard
 python3 step51_task_sla_timer.py     # SLA timer on task records
 
+# Own the forms. step18 and step51 above author the sections on Microsoft's Opportunity and
+# Task forms; these two copy the result onto forms SPC owns, then release Microsoft's from
+# the solution so an install never overwrites them. Run them after any form change.
+python3 step19_spc_forms.py          # fork -> Opportunity (SPC), Task (SPC)
+python3 step20_release_oob_forms.py  # register in the app, drop Microsoft's forms
+
 # AI agents
 python3 step41_agent_model.py        # agent configuration model
 python3 step42_register_agent_apis.py
@@ -207,8 +213,14 @@ Then check in the app:
 
 ## Post-installation notes
 
-**Shared artefacts.** The installer edits the Opportunity main form and the app site map. If you
-have your own customisations on the Opportunity form, review them after import.
+**Its own forms.** The solution ships two forms of its own, `Opportunity (SPC)` and `Task (SPC)`,
+and the app serves those. Microsoft's Opportunity and Task forms are left byte for byte as they
+were, so an install cannot overwrite customisations you already have on them.
+
+If you are upgrading from 1.1.1 or earlier, note that those versions *did* ship copies of
+Microsoft's forms. A managed upgrade does not retract components the new version no longer carries,
+so the sections that older build added to the Microsoft forms remain until you uninstall the
+solution completely and reinstall it.
 
 **Coexistence with the Case Process Configurator.** The two solutions are fully isolated and can be
 installed side by side. They both add columns to the shared `task` table, but each is prefixed

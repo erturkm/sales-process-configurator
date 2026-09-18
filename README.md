@@ -181,7 +181,7 @@ Quick summary:
 #   1. Import the Modern SLA Timer PCF:
 #      https://github.com/moliveirapinto/modern-sla-timer-pcf/releases
 #   2. Power Platform admin centre -> Solutions -> Import
-#      -> solution/SalesProcessConfigurator_1_1_1_0_managed.zip
+#      -> solution/SalesProcessConfigurator_1_2_0_0_managed.zip
 #   3. Then run the post-import steps in INSTALL.md.
 
 # Option B — build from source against your own environment
@@ -193,8 +193,8 @@ python3 step1_solution.py && python3 step2_tables.py   # ... see INSTALL.md
 
 > [!IMPORTANT]
 > Installing modifies your environment. It creates tables, registers a plug-in assembly and custom
-> APIs, and **edits shared artefacts** — the Opportunity main form, the model-driven app site map,
-> and app components. Use a disposable environment.
+> APIs, and adds its own forms and app components. It does **not** modify Microsoft's Opportunity or
+> Task forms. Use a disposable environment.
 
 ---
 
@@ -216,28 +216,30 @@ LICENSE                   MIT
 
 ### A note on packaging
 
-`src/step60_package.py` is the only supported way to cut a release zip. A plain **Export solution**
-produces a zip that cannot be imported anywhere else, and the reason is worth knowing if you fork
-this.
+`src/step60_package.py` is the only supported way to cut a release zip, and the reason is worth
+knowing if you fork this.
 
-This accelerator and the [Case Process
-Configurator](https://github.com/erturkm/case-process-configurator) were authored in the same
-environment, and both add their own sections to the three shared Task forms. That is correct and
-intended — a task belongs to a case or to a deal, and each panel shows only in its own context.
+A system form is an *atomic* solution component: it exports whole, and there is no way to export
+only your own sections of it. Earlier versions of this accelerator added their sections directly to
+Microsoft's Opportunity and Task forms, which meant the solution shipped entire copies of those
+forms — overwriting whatever the installing organisation already had on them, and dragging in every
+control on the form as an import dependency.
 
-But a system form is an *atomic* solution component: it exports whole, and there is no way to export
-only your own sections. So a raw export of this solution still carries the case sections, along with
-their columns, relationship and web resource — none of which exist in a clean environment. The
-import then fails with one missing dependency per foreign component, per form.
+Since 1.2.0 the accelerator owns its forms outright. `step19_spc_forms.py` forks the authored
+Opportunity and Task forms into `Opportunity (SPC)` and `Task (SPC)` under their own form ids, and
+`step20_release_oob_forms.py` removes Microsoft's originals from the solution. The fork drops
+anything belonging to another publisher — the Case Process Configurator's task sections, Field
+Service columns — along with the orphaned control bindings that a removed section leaves behind,
+which are themselves import dependencies.
 
-`step60_package.py` exports, strips the foreign sections and their control bindings from the form
-XML, clears the now-stale entries from the manifest the platform writes into `solution.xml`, and
-refuses to write a zip if anything foreign survives. Genuine prerequisites — the Modern SLA Timer
-PCF — are deliberately left in the manifest so they still fail loudly rather than silently.
+`step60_package.py` then exports, clears the now-stale entries from the manifest the platform writes
+into `solution.xml`, and refuses to write a zip if anything foreign survives. Genuine prerequisites —
+the Modern SLA Timer PCF — are deliberately left in the manifest so they still fail loudly rather
+than silently.
 
 ```bash
 export DATAVERSE_URL="https://yourorg.crm.dynamics.com"
-python3 src/step60_package.py --version 1.1.0.0
+python3 src/step60_package.py --version 1.2.0.0
 ```
 
 ---

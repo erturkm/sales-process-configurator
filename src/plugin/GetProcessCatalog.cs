@@ -16,6 +16,9 @@ namespace Spc.Plugins
     {
         private const string P = "spc_";
 
+        /// <summary>The table a sales process targets. Everything in this catalogue hangs off it.</summary>
+        private const string PrimaryEntity = "opportunity";
+
         public void Execute(IServiceProvider sp)
         {
             var ctx = (IPluginExecutionContext)sp.GetService(typeof(IPluginExecutionContext));
@@ -75,7 +78,7 @@ namespace Spc.Plugins
             AppendSecurityRoles(sb, svc);
             AppendAgents(sb, svc);
             AppendTemplates(sb, svc);
-            AppendCaseAttributes(sb, svc);
+            AppendDealAttributes(sb, svc);
             AppendRelatedAttributes(sb, svc);
             AppendLineAttributes(sb, svc);
             AppendProductTree(sb, svc);
@@ -233,15 +236,16 @@ namespace Spc.Plugins
         }
 
         /// <summary>
-        /// Every case field a business user could sensibly filter on, read from live metadata so the
-        /// rule builder offers the org's own custom columns without anyone editing this plug-in.
-        /// Choice fields carry their options inline so the value picker never has to guess.
+        /// Every opportunity field a business user could sensibly filter on, read from live metadata
+        /// so the rule builder offers the org's own custom columns without anyone editing this
+        /// plug-in. Choice fields carry their options inline so the value picker never has to guess.
         /// </summary>
-        private static void AppendCaseAttributes(StringBuilder sb, IOrganizationService svc)
+        private static void AppendDealAttributes(StringBuilder sb, IOrganizationService svc)
         {
-            var rows = UsefulAttributes(svc, "opportunity");
+            var rows = UsefulAttributes(svc, PrimaryEntity);
             var targets = new Dictionary<string, TargetInfo>(StringComparer.OrdinalIgnoreCase);
-            sb.Append(",").Append(Json.Q("caseAttributes")).Append(":[");
+            // The designer reads this as "This deal". The name has to match webresources/designer.html.
+            sb.Append(",").Append(Json.Q("dealAttributes")).Append(":[");
             var first = true;
             foreach (var a in rows)
             {
@@ -254,41 +258,86 @@ namespace Spc.Plugins
         }
 
         /// <summary>
-        /// Attributes reachable one hop from the case. Rules address these with a dotted path such as
+        /// Tables that describe the parties to a deal. A lookup pointing at one of these is worth
+        /// walking, because a maker filtering "Customer and owner" means the buyer or the seller.
+        /// This is a list of *targets*, never of column names: the columns themselves are always
+        /// discovered, so a path can never name a column the org does not actually have.
+        /// </summary>
+        private static bool IsPartyEntity(string entity)
+        {
+            return string.Equals(entity, "account", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(entity, "contact", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(entity, "systemuser", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(entity, "team", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(entity, "lead", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Attributes reachable one hop from the deal. Rules address these with a dotted path such as
         /// customerid.spc_customersegment, which lets a process target a property of the customer
-        /// (segment, tier, risk rating) instead of requiring that value to be copied onto every case.
+        /// (segment, tier, risk rating) instead of requiring that value to be copied onto every deal.
+        ///
+        /// The hops themselves are discovered from live metadata rather than hard coded. A hard coded
+        /// list is how "primarycontactid" - a case column that does not exist on opportunity - ended
+        /// up being offered in the rule builder: every rule built on it was a dead path that could
+        /// never match at runtime. Reading the lookups off the entity makes that impossible, and it
+        /// also means a lookup someone adds to opportunity tomorrow is filterable with no code change.
         /// </summary>
         private static void AppendRelatedAttributes(StringBuilder sb, IOrganizationService svc)
         {
-            var hops = new[]
-            {
-                new { Path = "customerid", Label = "Customer", Entities = new[] { "contact", "account" } },
-                new { Path = "primarycontactid", Label = "Contact", Entities = new[] { "contact" } },
-                new { Path = "ownerid", Label = "Owner", Entities = new[] { "systemuser" } },
-            };
-
             var targets = new Dictionary<string, TargetInfo>(StringComparer.OrdinalIgnoreCase);
             sb.Append(",").Append(Json.Q("relatedAttributes")).Append(":[");
             var first = true;
-            foreach (var hop in hops)
+
+            foreach (var hop in UsefulAttributes(svc, PrimaryEntity))
             {
+                var lk = hop as Microsoft.Xrm.Sdk.Metadata.LookupAttributeMetadata;
+                if (lk == null || lk.Targets == null || lk.Targets.Length == 0) continue;
+
+                // Audit stamps (created by, modified by on behalf of) point at systemuser and would
+                // otherwise drag a hundred columns each into the picker. A hop is only interesting if
+                // somebody can actually set it, which is exactly what these two flags say.
+                if (!hop.IsValidForCreate.GetValueOrDefault() && !hop.IsValidForUpdate.GetValueOrDefault())
+                    continue;
+
+                // Walk a lookup when it reaches a party, or when someone here added it deliberately.
+                // Everything else (currency, price list, predictive score) is plumbing: the lookup is
+                // already filterable as a deal column, its internals are not worth the payload.
+                var walk = false;
+                foreach (var t in lk.Targets) if (IsPartyEntity(t)) { walk = true; break; }
+                if (!walk && hop.IsCustomAttribute.GetValueOrDefault())
+                    foreach (var t in lk.Targets) if (!IsSystemTarget(t)) { walk = true; break; }
+                if (!walk) continue;
+
+                // The lookup's own display name, so the group reads the way the form does:
+                // "Potential Customer" on a deal, not the case-flavoured "Customer".
+                var hopLabel = hop.DisplayName.UserLocalizedLabel.Label;
+
                 // A polymorphic lookup exposes the union of its targets. Where both sides define the
                 // same column (segment on contact and on account) it is listed once.
                 var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var entity in hop.Entities)
+                foreach (var entity in lk.Targets)
                 {
                     foreach (var a in UsefulAttributes(svc, entity))
                     {
-                        var path = hop.Path + "." + a.LogicalName;
+                        var path = hop.LogicalName + "." + a.LogicalName;
                         if (!seen.Add(path)) continue;
                         if (!first) sb.Append(",");
                         first = false;
                         AppendAttribute(sb, svc, a, targets, path,
-                            hop.Label + " \u203a " + a.DisplayName.UserLocalizedLabel.Label, entity);
+                            hopLabel + " \u203a " + a.DisplayName.UserLocalizedLabel.Label, entity);
                     }
                 }
             }
             sb.Append("]");
+        }
+
+        /// <summary>Currency and other platform plumbing nobody writes a targeting rule against.</summary>
+        private static bool IsSystemTarget(string entity)
+        {
+            return string.Equals(entity, "transactioncurrency", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(entity, "businessunit", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(entity, "owner", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -379,13 +428,47 @@ namespace Spc.Plugins
             return rows;
         }
 
-        /// <summary>Emits one attribute descriptor, shared by the case and related attribute lists.</summary>
-        /// <summary>Tables that parent themselves, so a rule on a node can mean "and everything under it".</summary>
-        private static bool IsTreeEntity(string entity)
+        /// <summary>
+        /// Tables that parent themselves, so a rule on a node can mean "and everything under it".
+        /// Read from live metadata: any self-parenting table, including a custom one, unlocks the
+        /// "is at or under" operator without this plug-in needing to know its name.
+        /// </summary>
+        private static bool IsTreeEntity(IOrganizationService svc, string entity)
         {
-            return string.Equals(entity, "product", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(entity, "account", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(entity, "subject", StringComparison.OrdinalIgnoreCase);
+            bool hier;
+            if (TreeCache.TryGetValue(entity, out hier)) return hier;
+            hier = false;
+            try
+            {
+                var req = new Microsoft.Xrm.Sdk.Messages.RetrieveEntityRequest
+                {
+                    LogicalName = entity,
+                    EntityFilters = Microsoft.Xrm.Sdk.Metadata.EntityFilters.Relationships,
+                    RetrieveAsIfPublished = true
+                };
+                var md = ((Microsoft.Xrm.Sdk.Messages.RetrieveEntityResponse)svc.Execute(req)).EntityMetadata;
+                // Dataverse marks the self-referencing relationship that forms the tree, which is the
+                // same flag the platform uses to light up the hierarchy view.
+                if (md.OneToManyRelationships != null)
+                    foreach (var r in md.OneToManyRelationships)
+                        if (r.IsHierarchical.GetValueOrDefault()
+                            && string.Equals(r.ReferencingEntity, entity, StringComparison.OrdinalIgnoreCase))
+                        { hier = true; break; }
+            }
+            catch (Exception) { }
+            TreeCache[entity] = hier;
+            return hier;
+        }
+
+        [ThreadStatic]
+        private static Dictionary<string, bool> _treeCache;
+        private static Dictionary<string, bool> TreeCache
+        {
+            get
+            {
+                return _treeCache ?? (_treeCache =
+                    new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase));
+            }
         }
 
         /// <summary>
@@ -438,7 +521,7 @@ namespace Spc.Plugins
             // "is at or under" operator in the rule builder. Product is the important one here:
             // it is to a sales process what subject is to a case process.
             if (!hierarchical && lk != null && lk.Targets != null && lk.Targets.Length == 1)
-                hierarchical = IsTreeEntity(lk.Targets[0]);
+                hierarchical = IsTreeEntity(svc, lk.Targets[0]);
             sb.Append("],").Append(Json.Q("hierarchical")).Append(":")
               .Append(hierarchical ? "true" : "false")
               .Append(",").Append(Json.Q("options")).Append(":[");
